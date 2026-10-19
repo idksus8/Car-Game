@@ -523,8 +523,51 @@ function trimLoop(S){const n=S.length;let best=null;
   for(let i=0;i<n-3;i++)for(let j=i+2;j<n-1;j++)if(segX(S[i],S[i+1],S[j],S[j+1])&&(!best||j-i>best[1]-best[0]))best=[i,j];
   if(!best)return S;const[i,j]=best,a=S[i],b=S[i+1],c=S[j],d=S[j+1],den=(b[0]-a[0])*(d[1]-c[1])-(b[1]-a[1])*(d[0]-c[0]),u=((c[0]-a[0])*(d[1]-c[1])-(c[1]-a[1])*(d[0]-c[0]))/den;
   return[[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u],...S.slice(i+1,j+1)]}
+// ----- drawn-stroke fitting: clean the sketch, then repair it instead of rejecting it
+const polyArea=P=>{let a=0;const n=P.length;for(let i=0;i<n;i++){const p=P[i],q=P[(i+1)%n];a+=p[0]*q[1]-q[0]*p[1]}return a/2};
+const smoothP=P=>{const n=P.length;return norm(P.map((p,i)=>{const a=P[(i+n-1)%n],b=P[(i+1)%n];return[p[0]*.5+(a[0]+b[0])*.25,p[1]*.5+(a[1]+b[1])*.25]}),1700)};
+function cleanStroke(S){const o=[S[0]];
+  for(let i=1;i<S.length;i++){const l=o[o.length-1];if(Math.hypot(S[i][0]-l[0],S[i][1]-l[1])>=3)o.push(S[i])}
+  let a=o;if(a.length<4)return a;
+  for(let k=0;k<2;k++){const b=a;a=b.map((p,i)=>i===0||i===b.length-1?p:[(b[i-1][0]+2*p[0]+b[i+1][0])/4,(b[i-1][1]+2*p[1]+b[i+1][1])/4])}
+  return a}
+// push apart any two stretches of track that are closer than a car-and-barrier width
+function pushApart(P){const n=P.length;let D=P.map(()=>[0,0]),moved=false;
+  for(let i=0;i<n;i++)for(let j=i+15;j<n;j++){if(n-(j-i)<15)continue;
+    let dx=P[j][0]-P[i][0],dz=P[j][1]-P[i][1],d=Math.hypot(dx,dz);
+    if(d<84){moved=true;if(d<1e-6){dx=1;dz=0;d=1}const f=(84-d)/2*.7/d;D[i][0]-=dx*f;D[i][1]-=dz*f;D[j][0]+=dx*f;D[j][1]+=dz*f}}
+  if(!moved)return null;
+  for(let k=0;k<3;k++)D=D.map((v,i)=>{const a=D[(i+n-1)%n],b=D[(i+1)%n];return[(a[0]+2*v[0]+b[0])/4,(a[1]+2*v[1]+b[1])/4]});
+  return P.map((p,i)=>[p[0]+D[i][0],p[1]+D[i][1]])}
+// last resort for a loop that still crosses itself: rebuild it as a smooth star-shaped outline of the same direction
+function starShape(P){const n=P.length,B=140,c=P.reduce((a,p)=>[a[0]+p[0]/n,a[1]+p[1]/n],[0,0]),sum=new Array(B).fill(0),cnt=new Array(B).fill(0);
+  P.forEach(p=>{const b=Math.min(B-1,Math.floor((Math.atan2(p[1]-c[1],p[0]-c[0])+Math.PI)/(2*Math.PI)*B));sum[b]+=Math.hypot(p[0]-c[0],p[1]-c[1]);cnt[b]++});
+  let r=sum.map((v,i)=>cnt[i]?v/cnt[i]:null);
+  for(let i=0;i<B;i++)if(r[i]===null){let a=1,b=1;while(r[(i-a+B)%B]===null&&a<B)a++;while(r[(i+b)%B]===null&&b<B)b++;const ra=r[(i-a+B)%B],rb=r[(i+b)%B];r[i]=ra+(rb-ra)*a/(a+b)}
+  for(let k=0;k<3;k++){const q=r;r=q.map((v,i)=>(q[(i+B-1)%B]+2*v+q[(i+1)%B])/4)}
+  const Q=r.map((v,i)=>{const a=(i+.5)/B*2*Math.PI-Math.PI;return[c[0]+Math.cos(a)*v,c[1]+Math.sin(a)*v]});
+  if(polyArea(P)<0)Q.reverse();return norm(Q,1700)}
+function tidy(P,info){
+  for(let r=0;r<14;r++){
+    for(let k=0;k<3000&&maxK(P)>1/44;k++)P=smoothP(P);
+    let moved=false;
+    for(let k=0;k<80;k++){const Q=pushApart(P);if(!Q)break;moved=true;info.apart=true;P=smoothP(Q)}
+    if(!moved)break}
+  return P}
+function fitDrawn(S0){
+  let S=cleanStroke(S0);
+  if(S.length<8||plen(S)<200)return{err:'Draw a bigger loop.'};
+  for(let k=0;k<4;k++){const T=trimLoop(S);if(T===S)break;S=T}   // cut off tails and overlaps where the line crosses itself
+  if(S.length<6)return{err:'Draw a bigger loop.'};
+  const L=plen(S);if(Math.abs(polyArea(S))<L*5)return{err:'That is more of a line than a loop. Draw a closed circuit.'};
+  let P=norm(resampleClosed(S,140),1700);const info={};
+  for(let k=0;k<10;k++)P=smoothP(P);
+  if(selfX(P)){for(let k=0;k<80&&selfX(P);k++)P=smoothP(P);if(selfX(P)){P=starShape(P);info.star=true}}
+  P=tidy(P,info);
+  if(selfX(P)){P=tidy(starShape(P),info);info.star=true}
+  return{P,note:info.star?'Your loop crossed over itself, so it was straightened out.':info.apart?'Squeezed sections were pulled apart so the cars fit.':''}}
 function fit(S,closed){
-  if(!closed){if(S.length<12||plen(S)<200)return{err:'Draw a bigger loop.'};S=trimLoop(S)}
+  if(!closed)return fitDrawn(S);
   let P=norm(resampleClosed(S,140),1700);
   const sm=()=>{const n=P.length,Q=P;P=norm(Q.map((p,i)=>{const a=Q[(i+n-1)%n],b=Q[(i+1)%n];return[p[0]*.5+(a[0]+b[0])*.25,p[1]*.5+(a[1]+b[1])*.25]}),1700)};
   for(let k=0;k<4;k++)sm();
@@ -541,22 +584,48 @@ function randomTrack(){
 const dc=$('dc'),dx=dc.getContext('2d'),DPR=Math.min(window.devicePixelRatio||1,2);let stroke=[],drawing=false,fitted=null,round=0;
 const setD=(t,err)=>{const e=$('dmsg');e.textContent=t;e.className=err?'err':''};
 function sizeDraw(){dc.width=dc.clientWidth*DPR;dc.height=dc.clientHeight*DPR}
+// same spline and start-line choice as buildTrack, so the preview shows what will actually be raced
+function splineOf(P){const curve=new THREE.CatmullRomCurve3(P.map(([x,z])=>new THREE.Vector3(x,0,z)),true,'centripetal'),raw=curve.getSpacedPoints(N).slice(0,N),cr=[];
+  for(let i=0;i<N;i++){const a=new THREE.Vector3().subVectors(raw[(i+1)%N],raw[i]).setY(0).normalize(),b=new THREE.Vector3().subVectors(raw[(i+13)%N],raw[(i+12)%N]).setY(0).normalize();cr.push(Math.acos(clamp(a.dot(b),-1,1)))}
+  let st=0,bs=1e9;for(let i=0;i<N;i+=4){let m=0;for(let k=-28;k<=28;k+=4)m=Math.max(m,cr[(i+k+N)%N]);if(m<bs){bs=m;st=i}}
+  return raw.slice(st).concat(raw.slice(0,st))}
+const CLOSE=30;
 function paintDraw(){const w=dc.clientWidth,h=dc.clientHeight;dx.setTransform(DPR,0,0,DPR,0,0);dx.clearRect(0,0,w,h);
   dx.strokeStyle='rgba(255,255,255,.04)';dx.lineWidth=1;dx.beginPath();for(let x=0;x<w;x+=40){dx.moveTo(x,0);dx.lineTo(x,h)}for(let y=0;y<h;y+=40){dx.moveTo(0,y);dx.lineTo(w,y)}dx.stroke();
-  if(fitted){const P=fitted.P,xs=P.map(q=>q[0]),zs=P.map(q=>q[1]),x0=Math.min(...xs),x1=Math.max(...xs),z0=Math.min(...zs),z1=Math.max(...zs),k=Math.min((w-100)/(x1-x0),(h-100)/(z1-z0)),ox=(w-(x1-x0)*k)/2-x0*k,oz=(h-(z1-z0)*k)/2-z0*k;
-    const path=()=>{dx.beginPath();P.forEach((q,i)=>{const X=q[0]*k+ox,Z=q[1]*k+oz;i?dx.lineTo(X,Z):dx.moveTo(X,Z)});dx.closePath()};
-    dx.lineJoin='round';path();dx.strokeStyle='#2b313d';dx.lineWidth=Math.max(10,28*k);dx.stroke();
-    path();dx.strokeStyle='rgba(255,255,255,.5)';dx.lineWidth=1.5;dx.setLineDash([8,10]);dx.stroke();dx.setLineDash([]);
-    dx.fillStyle='#ff4d2e';for(let i=0;i<P.length;i+=14){const a=P[i],b=P[(i+1)%P.length],X=a[0]*k+ox,Z=a[1]*k+oz,ang=Math.atan2(b[1]-a[1],b[0]-a[0]);
-      dx.save();dx.translate(X,Z);dx.rotate(ang);dx.beginPath();dx.moveTo(7,0);dx.lineTo(-5,-5);dx.lineTo(-5,5);dx.fill();dx.restore()}}
-  else if(stroke.length>1){dx.lineJoin=dx.lineCap='round';dx.strokeStyle='#ff4d2e';dx.lineWidth=3;dx.beginPath();stroke.forEach((q,i)=>i?dx.lineTo(q[0],q[1]):dx.moveTo(q[0],q[1]));dx.stroke()}
+  if(fitted){
+    const Q=fitted.sp||(fitted.sp=splineOf(fitted.P)),xs=Q.map(q=>q.x),zs=Q.map(q=>q.z),x0=Math.min(...xs),x1=Math.max(...xs),z0=Math.min(...zs),z1=Math.max(...zs),
+      k=Math.min((w-90)/(x1-x0),(h-90)/(z1-z0)),ox=(w-(x1-x0)*k)/2-x0*k,oz=(h-(z1-z0)*k)/2-z0*k,X=q=>q.x*k+ox,Z=q=>q.z*k+oz,tw=Math.max(10,28*k);
+    const path=()=>{dx.beginPath();Q.forEach((q,i)=>i?dx.lineTo(X(q),Z(q)):dx.moveTo(X(q),Z(q)));dx.closePath()};
+    dx.lineJoin='round';dx.lineCap='butt';
+    path();dx.strokeStyle='rgba(255,77,46,.16)';dx.lineWidth=tw+22;dx.stroke();
+    path();dx.strokeStyle='#e63946';dx.lineWidth=tw+7;dx.setLineDash([9,9]);dx.stroke();
+    path();dx.strokeStyle='#f5f5f5';dx.lineWidth=tw+7;dx.lineDashOffset=-9;dx.stroke();dx.setLineDash([]);dx.lineDashOffset=0;
+    path();dx.strokeStyle='#2b313d';dx.lineWidth=tw;dx.stroke();
+    path();dx.strokeStyle='rgba(255,255,255,.45)';dx.lineWidth=1.5;dx.setLineDash([8,10]);dx.stroke();dx.setLineDash([]);
+    dx.fillStyle='#ff4d2e';for(let i=30;i<N;i+=45){const a=Q[i],b=Q[(i+2)%N],ang=Math.atan2(Z(b)-Z(a),X(b)-X(a));
+      dx.save();dx.translate(X(a),Z(a));dx.rotate(ang);dx.beginPath();dx.moveTo(8,0);dx.lineTo(-5,-6);dx.lineTo(-5,6);dx.fill();dx.restore()}
+    // checkered start / finish line across the track
+    {const a=Q[0],b=Q[3],ang=Math.atan2(Z(b)-Z(a),X(b)-X(a)),sq=Math.max(3,tw/6),rows=Math.round(tw/sq);
+      dx.save();dx.translate(X(a),Z(a));dx.rotate(ang);
+      for(let r=0;r<rows;r++)for(let c=0;c<2;c++){dx.fillStyle=(r+c)%2?'#111':'#fff';dx.fillRect(c*sq-sq,-tw/2+r*sq,sq,sq)}
+      dx.restore();
+      dx.fillStyle='#fff';dx.font='600 13px "Barlow Condensed",sans-serif';dx.textAlign='center';dx.fillText('START',X(a)-Math.sin(ang)*(tw/2+16),Z(a)+Math.cos(ang)*(tw/2+16)+4)}
+  }
+  else if(stroke.length>1){
+    dx.lineJoin=dx.lineCap='round';dx.shadowColor='rgba(255,77,46,.7)';dx.shadowBlur=10;dx.strokeStyle='#ff4d2e';dx.lineWidth=4;
+    dx.beginPath();dx.moveTo(stroke[0][0],stroke[0][1]);
+    for(let i=1;i<stroke.length-1;i++){const m=[(stroke[i][0]+stroke[i+1][0])/2,(stroke[i][1]+stroke[i+1][1])/2];dx.quadraticCurveTo(stroke[i][0],stroke[i][1],m[0],m[1])}
+    const e=stroke[stroke.length-1];dx.lineTo(e[0],e[1]);dx.stroke();dx.shadowBlur=0;
+    const s=stroke[0],near=drawing&&travel>260&&maxFromStart>110&&Math.hypot(e[0]-s[0],e[1]-s[1])<CLOSE*2.2;
+    dx.beginPath();dx.arc(s[0],s[1],near?CLOSE*.8:7,0,7);dx.fillStyle=near?'rgba(80,220,140,.25)':'#5ad28c';dx.fill();
+    if(near){dx.strokeStyle='#5ad28c';dx.lineWidth=2;dx.stroke()}}
   else{dx.fillStyle='rgba(255,255,255,.18)';dx.font='600 22px "Barlow Condensed",sans-serif';dx.textAlign='center';dx.fillText('DRAW A CLOSED LOOP HERE',w/2,h/2)}}
 function openDraw(title){if(title==null){round++;title='Round '+round}
   drawTitle=title;$('menu').style.display='none';$('draw').style.display='flex';state='draw';$('dr').textContent=title;$('dback').style.display=MP?'none':'';stroke=[];fitted=null;$('dgo').disabled=true;
   clearInterval(drawCd);
   if(MP){drawEnd=Date.now()+DRAWMS;drawCd=setInterval(tickDraw,250);tickDraw();
     setD('You were picked to design this round\'s track. Sketch a closed loop and everyone races it. If time runs out, your sketch (or a random track) is used.')}
-  else setD('Sketch a closed loop with your finger or mouse. It is smoothed into a track, and the race starts on its straightest stretch.');
+  else setD('Sketch a closed loop. Finish near where you started and it snaps shut. Crossings, tight corners and squeezed sections are cleaned up for you, and the race starts on the straightest stretch.');
   sizeDraw();paintDraw()}
 function tickDraw(){if(state!=='draw'){clearInterval(drawCd);return}
   const t=Math.max(0,Math.ceil((drawEnd-Date.now())/1000));$('dr').textContent=drawTitle+' · '+t+'s';
@@ -565,10 +634,16 @@ function submitTrack(){if(!fitted||state!=='draw')return;
   if(MP){const m={t:'track',track:fitted.P.map(p=>[+p[0].toFixed(1),+p[1].toFixed(1)])};net(m);handle(m);return}
   buildTrack(fitted.P);$('draw').style.display='none';begin()}
 const dpos=e=>{const r=dc.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]};
-dc.addEventListener('pointerdown',e=>{e.preventDefault();try{dc.setPointerCapture(e.pointerId)}catch(_){}drawing=true;fitted=null;stroke=[dpos(e)];$('dgo').disabled=true;setD('');paintDraw()});
-dc.addEventListener('pointermove',e=>{if(!drawing)return;const q=dpos(e),l=stroke[stroke.length-1];if(Math.hypot(q[0]-l[0],q[1]-l[1])>5){stroke.push(q);paintDraw()}});
-const endDraw=()=>{if(!drawing)return;drawing=false;const r=fit(stroke,false);if(r.err){fitted=null;setD(r.err,true)}else{fitted=r;setD('Looks good. Race it, or draw again to change it.');$('dgo').disabled=false}paintDraw()};
-dc.addEventListener('pointerup',endDraw);dc.addEventListener('pointercancel',endDraw);
+let drawPid=null,travel=0,maxFromStart=0;
+const addPt=q=>{const l=stroke[stroke.length-1],d=Math.hypot(q[0]-l[0],q[1]-l[1]);if(d<3)return;stroke.push(q);travel+=d;maxFromStart=Math.max(maxFromStart,Math.hypot(q[0]-stroke[0][0],q[1]-stroke[0][1]))};
+const endDraw=()=>{if(!drawing)return;drawing=false;drawPid=null;const r=fit(stroke,false);if(r.err){fitted=null;setD(r.err,true)}else{fitted=r;setD(r.note||'Looks good. Race it, or draw again to change it.');$('dgo').disabled=false}paintDraw()};
+dc.addEventListener('pointerdown',e=>{if(drawing)return;e.preventDefault();try{dc.setPointerCapture(e.pointerId)}catch(_){}drawPid=e.pointerId;drawing=true;fitted=null;stroke=[dpos(e)];travel=0;maxFromStart=0;$('dgo').disabled=true;setD('');paintDraw()});
+dc.addEventListener('pointermove',e=>{if(!drawing||e.pointerId!==drawPid)return;
+  const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];for(const ev of evs.length?evs:[e])addPt(dpos(ev));
+  const s=stroke[0],l=stroke[stroke.length-1];   // the line came back to where it started: snap it shut
+  if(travel>260&&maxFromStart>110&&Math.hypot(l[0]-s[0],l[1]-s[1])<CLOSE){stroke.push(s.slice());endDraw();return}
+  paintDraw()});
+dc.addEventListener('pointerup',e=>{if(e.pointerId===drawPid)endDraw()});dc.addEventListener('pointercancel',e=>{if(e.pointerId===drawPid)endDraw()});
 $('dclear').addEventListener('click',()=>{stroke=[];fitted=null;$('dgo').disabled=true;setD('');paintDraw()});
 $('drand').addEventListener('click',()=>{fitted={P:randomTrack()};setD('Random track. Race it, or draw your own.');$('dgo').disabled=false;paintDraw()});
 $('dback').addEventListener('click',()=>{$('draw').style.display='none';$('menu').style.display='flex';state='ready'});

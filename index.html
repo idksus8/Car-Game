@@ -298,7 +298,7 @@ function makeKart(col){
 function mk(col,isMe){const k=makeKart(isMe?null:col);scene.add(k.g);
   const sh=new THREE.Mesh(new THREE.SphereGeometry(3.6,16,12),new THREE.MeshBasicMaterial({color:0x4cc9f0,transparent:true,opacity:.3,depthWrite:false}));sh.position.y=1.5;sh.visible=false;k.g.add(sh);
   const lc=document.createElement('canvas');lc.width=256;lc.height=64;const lab=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(lc),transparent:true,depthWrite:false,fog:false}));lab.scale.set(8,2,1);lab.position.y=5.6;lab.visible=false;k.g.add(lab);
-  return{...k,sh,lab,lc,id:'',remote:false,shield:0,zap:0,aiT:6,tx:0,tz:0,th:0,tv:0,isMe,col,x:0,z:0,h:0,v:0,idx:0,lap:-1,prog:0,spin:0,boost:0,drift:0,charge:0,item:null,lane:(Math.random()-.5)*1.2,ph:Math.random()*6,sp:.94+Math.random()*.06,sk:.55+Math.random()*.45,dr:false,aiItem:null,hold:0,cap:1,roll:0,sa:0,finished:false,fin:0}}
+  return{...k,sh,lab,lc,id:'',remote:false,shield:0,zap:0,aiT:6,tx:0,tz:0,th:0,tv:0,isMe,col,x:0,z:0,h:0,v:0,idx:0,lap:-1,prog:0,spin:0,boost:0,drift:0,charge:0,item:null,lane:(Math.random()-.5)*1.2,ph:Math.random()*6,sp:1.03+Math.random()*.06,sk:.55+Math.random()*.45,dr:false,aiItem:null,hold:0,cap:1,roll:0,sa:0,finished:false,fin:0}}
 const ACOL=[0x2ec4b6,0x4cc9f0,0xb388ff,0xffd23f,0xf2f2f2];
 const me=mk(0xff3b1f,true),R=[...ACOL.map(c=>mk(c,false)),me];
 R.forEach((r,k)=>{r.id=r.isMe?'h':'a'+k});
@@ -312,12 +312,13 @@ function makeBoxes(scene){boxes.length=0;const geo=new THREE.BoxGeometry(2.4,2.4
 // anyone grabbing a box (player, bot or remote driver) hides it for everybody
 function grabBox(i){const b=boxes[i];b.t=5;b.m.visible=false;net({t:'box',i})}
 const slickGeo=new THREE.CircleGeometry(3,18),slickMat=new THREE.MeshBasicMaterial({color:0x2a1a4a});
-const ITEMS={boost:['<path d="M5 17l7-7 7 7M5 11l7-7 7 7"/>','BOOST'],oil:['<path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/>','OIL'],rocket:['<path d="M12 2c3 3 4 7 4 11l-4 3-4-3c0-4 1-8 4-11zM8 14l-3 4 4-1M16 14l3 4-4-1"/>','ROCKET'],shield:['<path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/>','SHIELD'],zap:['<path d="M13 2L5 14h6l-1 8 8-12h-6z"/>','ZAP']};
+const ITEMS={boost:['<path d="M5 17l7-7 7 7M5 11l7-7 7 7"/>','BOOST'],oil:['<path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/>','OIL'],rocket:['<path d="M12 2c3 3 4 7 4 11l-4 3-4-3c0-4 1-8 4-11zM8 14l-3 4 4-1M16 14l3 4-4-1"/>','ROCKET'],shield:['<path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/>','SHIELD'],zap:['<path d="M13 2L5 14h6l-1 8 8-12h-6z"/>','ZAP'],teleport:['<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/>','TELEPORT']};
 // item rarities: common < rare < legendary. Trailing drivers roll better odds, the leader never rolls legendary.
 const RAR={common:{n:'Common',c:'#c9d1dc'},rare:{n:'Rare',c:'#4aa8ff'},legendary:{n:'Legendary',c:'#ffb020'}},
   RTIER={common:['boost','oil'],rare:['rocket','shield'],legendary:['zap']},
-  RARITY=Object.fromEntries(Object.entries(RTIER).flatMap(([r,l])=>l.map(k=>[k,r])));
-function pickItem(rk){const w=rk===1?{common:70,rare:30}:rk<4?{common:50,rare:40,legendary:10}:{common:34,rare:41,legendary:25};
+  RARITY=Object.fromEntries(Object.entries(RTIER).flatMap(([r,l])=>l.map(k=>[k,r])));RARITY.teleport='legendary';   // teleport is not in a tier: only last place can roll it
+function pickItem(rk){if(rk>=R.length&&Math.random()<.4)return'teleport';
+  const w=rk===1?{common:70,rare:30}:rk<4?{common:50,rare:40,legendary:10}:{common:34,rare:41,legendary:25};
   let t=0;for(const k in w)t+=w[k];let x=Math.random()*t,tier='common';for(const k in w){x-=w[k];if(x<0){tier=k;break}}
   const l=RTIER[tier];return l[Math.random()*l.length|0]}
 let toastT=0;
@@ -338,7 +339,23 @@ function useItem(r,k){
   else if(k==='rocket'){const t=R.filter(o=>o.prog>r.prog).sort((a,b)=>a.prog-b.prog)[0],id=r.id+'r'+uid++,x=r.x+s*(HL+2),z=r.z+c*(HL+2);
     launch(id,r.id,t&&t.id,x,z,r.h);net({t:'rocket',id,own:r.id,tg:t&&t.id,x,z,h:r.h})}
   else if(k==='zap'){zapAll(r);net({t:'zap',from:r.id})}
+  else if(k==='teleport')teleport(r);
 }
+function tpFx(x,z){puff(x,2,z,'#c58bff',.9,10,.45,true);puff(x,1,z,'#ffffff',.9,5,.25,true);for(let i=0;i<8;i++)spark(x+(Math.random()-.5)*2,1+Math.random()*2,z+(Math.random()-.5)*2,i&1?'b':'w')}
+// jump to a random spot 13-50% of a lap ahead (never straight onto the finish), preferring a gap with no other kart
+function teleport(r){
+  const ox=r.x,oz=r.z,room=LAPS*N-40-r.prog;let best=null;
+  for(let t=0;t<8;t++){const d=Math.min(Math.floor(80+Math.random()*220),room);if(d<12)break;
+    const ni=(r.idx+d)%N,lat=(Math.random()-.5)*2*(HW-5),x=pts[ni].x+rgt[ni].x*lat,z=pts[ni].z+rgt[ni].z*lat;
+    let clear=1e9;for(const o of R)if(o!==r)clear=Math.min(clear,Math.hypot(o.x-x,o.z-z));
+    if(!best||clear>best.clear)best={d,ni,x,z,clear};if(clear>10)break}
+  if(!best)return;
+  const wrap=r.idx+best.d>=N?1:0;
+  Object.assign(r,{x:best.x,z:best.z,h:Math.atan2(tan[best.ni].x,tan[best.ni].z),idx:best.ni,lap:r.lap+wrap,spin:0,drift:0,charge:0});
+  r.prog=r.lap*N+r.idx;r.v*=.85;r.tx=r.x;r.tz=r.z;r.th=r.h;
+  tpFx(ox,oz);tpFx(r.x,r.z);
+  if(r===me){ch=me.h;cam.position.set(me.x-Math.sin(ch)*14,6.8,me.z-Math.cos(ch)*14)}
+  net({t:'tp',id:r.id,x:r.x,z:r.z,h:r.h,ox,oz})}
 function rocketStep(dt){
   for(let i=rockets.length-1;i>=0;i--){const q=rockets[i];q.t-=dt;q.idx=nearest(q);
     const tg=q.tg&&byId[q.tg],j=(q.idx+10)%N,ax=tg?tg.x:pts[j].x,az=tg?tg.z:pts[j].z;
@@ -518,6 +535,7 @@ function handle(m){switch(m.t){
   case'rocket':launch(m.id,m.own,m.tg,m.x,m.z,m.h);break;
   case'rkm':{const i=rockets.findIndex(q=>q.id===m.id);if(i>=0){scene.remove(rockets[i].m);rockets.splice(i,1)}break}
   case'hit':{const v=byId[m.to];if(m.to===me.id)hurt(me,m.d);else if(isHost&&v&&!v.remote)hurt(v,m.d);break}
+  case'tp':{const v=byId[m.id];tpFx(m.ox,m.oz);tpFx(m.x,m.z);if(v&&v.remote){v.x=v.tx=m.x;v.z=v.tz=m.z;v.h=v.th=m.h}break}
   case'box':{const b=boxes[m.i];if(b){b.t=5;b.m.visible=false}break}
   case'zap':zapAll(byId[m.from]);break}}
 function netTick(dt){if(!MP||state==='ready'||state==='wait'||state==='draw')return;sendT+=dt;if(sendT<.05)return;sendT=0;
@@ -677,7 +695,7 @@ function aiInput(r){
   const tx=pts[ti].x+rgt[ti].x*lane,tz=pts[ti].z+rgt[ti].z*lane;
   let d=Math.atan2(tx-r.x,tz-r.z)-r.h;d=Math.atan2(Math.sin(d),Math.cos(d));
   let steer=clamp(-d*3,-1,1),gas=true,brake=false;
-  for(let k=0;k<=30;k+=3){const j=(i+k)%N,allow=Math.sqrt(VT[j]*VT[j]+84*k*SEGL)*(r.sk>.8?1:.94);if(v>allow){gas=false;brake=v>allow+5;break}}
+  for(let k=0;k<=30;k+=3){const j=(i+k)%N,allow=Math.sqrt(VT[j]*VT[j]+84*k*SEGL)*(r.sk>.8?1.08:1.02);if(v>allow){gas=false;brake=v>allow+5;break}}
   const sg=Math.sign(SG[(i+7)%N]);
   if(!r.dr){if(r.sk>.6&&cur[(i+7)%N]>.3&&sp>.55&&r.spin<=0&&blk<.3&&gas)r.dr=true}
   else if(r.charge>1.9||(cur[(i+4)%N]<.14&&r.charge>.9)||sp<.45||r.spin>0)r.dr=false;
@@ -694,6 +712,7 @@ function aiItem(a,dt){
   else if(k==='oil')use=use||R.some(o=>o!==a&&o.prog<a.prog&&a.prog-o.prog<8&&Math.abs(latOf(o)-latOf(a))<6);
   else if(k==='shield')use=use||rockets.some(q=>q.tg===a.id&&Math.hypot(q.x-a.x,q.z-a.z)<45);
   else if(k==='zap')use=use||(rankOf(a)>=3&&a.hold>1);
+  else if(k==='teleport')use=use||a.hold>.8;
   if(use){useItem(a,k);a.aiItem=null;a.aiT=1+Math.random()*2}
 }
 function step(r,dt,I){
@@ -727,7 +746,7 @@ function update(dt){
     // AI
     for(const a of R){if((a.isMe&&!me.finished)||a.remote)continue;
       const rel=MP?0:a.prog-me.prog;
-      a.cap=a.isMe?.7:a.sp*(rel>0?1-Math.min(.14,rel/260):1+Math.min(.1,-rel/260));
+      a.cap=a.isMe?.7:a.sp*(rel>0?1-Math.min(.06,rel/500):1+Math.min(.16,-rel/180));
       aiItem(a,dt);
       step(a,dt,aiInput(a))}
     for(const r of R){if(!r.remote)continue;const k=1-Math.exp(-12*dt);

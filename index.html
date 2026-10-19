@@ -611,9 +611,10 @@ function starShape(P){const n=P.length,B=140,c=P.reduce((a,p)=>[a[0]+p[0]/n,a[1]
   for(let k=0;k<3;k++){const q=r;r=q.map((v,i)=>(q[(i+B-1)%B]+2*v+q[(i+1)%B])/4)}
   const Q=r.map((v,i)=>{const a=(i+.5)/B*2*Math.PI-Math.PI;return[c[0]+Math.cos(a)*v,c[1]+Math.sin(a)*v]});
   if(polyArea(P)<0)Q.reverse();return norm(Q,1700)}
+const DRAWR=26;
 function tidy(P,info){
   for(let r=0;r<14;r++){
-    for(let k=0;k<3000&&maxK(P)>1/44;k++)P=smoothP(P);
+    for(let k=0;k<3000&&maxK(P)>1/DRAWR;k++)P=smoothP(P);   // drawn corners may be tight: only rounded off down to a radius the karts and barriers fit
     let moved=false;
     for(let k=0;k<80;k++){const Q=pushApart(P);if(!Q)break;moved=true;info.apart=true;P=smoothP(Q)}
     if(!moved)break}
@@ -625,7 +626,7 @@ function fitDrawn(S0){
   if(S.length<6)return{err:'Draw a bigger loop.'};
   const L=plen(S);if(Math.abs(polyArea(S))<L*5)return{err:'That is more of a line than a loop. Draw a closed circuit.'};
   let P=norm(resampleClosed(S,140),1700);const info={};
-  for(let k=0;k<10;k++)P=smoothP(P);
+  for(let k=0;k<4;k++)P=smoothP(P);   // light smoothing so sharp corners survive
   if(selfX(P)){for(let k=0;k<80&&selfX(P);k++)P=smoothP(P);if(selfX(P)){P=starShape(P);info.star=true}}
   P=tidy(P,info);
   if(selfX(P)){P=tidy(starShape(P),info);info.star=true}

@@ -529,8 +529,8 @@ function fit(S,closed){
   const sm=()=>{const n=P.length,Q=P;P=norm(Q.map((p,i)=>{const a=Q[(i+n-1)%n],b=Q[(i+1)%n];return[p[0]*.5+(a[0]+b[0])*.25,p[1]*.5+(a[1]+b[1])*.25]}),1700)};
   for(let k=0;k<4;k++)sm();
   if(selfX(P))return{err:'The track crosses itself. Draw a loop that does not overlap.'};
-  for(let k=0;k<500&&maxK(P)>1/44;k++)sm();
-  if(maxK(P)>1/38)return{err:'Those turns are too tight. Draw wider, smoother corners.'};
+  // keep smoothing until the corners are wide enough, or as close as it can get
+  for(let k=0;k<3000&&maxK(P)>1/44;k++)sm();
   for(let i=0;i<P.length;i++)for(let j=i+15;j<P.length;j++){if(P.length-(j-i)<15)continue;if(Math.hypot(P[i][0]-P[j][0],P[i][1]-P[j][1])<50)return{err:'Parts of the track are too close together.'}}
   return{P}}
 function randomTrack(){

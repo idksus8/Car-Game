@@ -331,7 +331,7 @@ function dropSlick(x,z,id){const m=new THREE.Mesh(slickGeo,slickMat);m.rotation.
 function nearestAll(x,z){let b=1e18,bi=0;for(let i=0;i<N;i++){const d=(x-pts[i].x)**2+(z-pts[i].z)**2;if(d<b){b=d;bi=i}}return bi}
 function launch(id,own,tg,x,z,h){const m=new THREE.Mesh(rgeo,rmat),g=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW,color:0xff9a30,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));
   g.scale.set(4,4,1);g.position.y=-1.4;m.add(g);m.rotation.order='YXZ';scene.add(m);rockets.push({m,id,own,tg,x,z,h,t:7,idx:nearestAll(x,z)})}
-function hurt(r,d){if(r.shield>0)return false;r.spin=d||.9;r.v*=.4;r.drift=0;r.charge=0;return true}
+function hurt(r,d){if(r.shield>0)return false;r.spin=d||.9;r.v*=.4;r.drift=0;r.charge=0;r.sl=(r.sl||0)+(Math.random()-.5)*18;return true}
 function useItem(r,k){
   const s=Math.sin(r.h),c=Math.cos(r.h);
   if(k==='boost')r.boost=1.6;else if(k==='shield')r.shield=5;
@@ -351,7 +351,7 @@ function teleport(r){
     if(!best||clear>best.clear)best={d,ni,x,z,clear};if(clear>10)break}
   if(!best)return;
   const wrap=r.idx+best.d>=N?1:0;
-  Object.assign(r,{x:best.x,z:best.z,h:Math.atan2(tan[best.ni].x,tan[best.ni].z),idx:best.ni,lap:r.lap+wrap,spin:0,drift:0,charge:0});
+  Object.assign(r,{x:best.x,z:best.z,h:Math.atan2(tan[best.ni].x,tan[best.ni].z),idx:best.ni,lap:r.lap+wrap,spin:0,drift:0,charge:0,sl:0});
   r.prog=r.lap*N+r.idx;r.v*=.85;r.tx=r.x;r.tz=r.z;r.th=r.h;
   tpFx(ox,oz);tpFx(r.x,r.z);
   if(r===me){ch=me.h;cam.position.set(me.x-Math.sin(ch)*14,6.8,me.z-Math.cos(ch)*14)}
@@ -442,18 +442,24 @@ let state='ready',cd=0,raceT=0,time=0,ch=0,place=0,finT=0;
 function nearest(r){let best=1e18,bi=r.idx;for(let k=-25;k<=25;k++){const i=(r.idx+k+N)%N,dx=r.x-pts[i].x,dz=r.z-pts[i].z,d=dx*dx+dz*dz;if(d<best){best=d;bi=i}}return bi}
 function circ(r){const s=Math.sin(r.h),c=Math.cos(r.h);return HBO.map(o=>[r.x+s*o,r.z+c*o])}
 function hit(r,x,z,rad){return circ(r).some(p=>Math.hypot(p[0]-x,p[1]-z)<rad)}
+// velocity as a world-space vector, and back into forward speed + sideways slip
+const velOf=r=>{const f0=Math.sin(r.h),f1=Math.cos(r.h);return r.remote?[f0*r.tv,f1*r.tv]:[f0*r.v-f1*(r.sl||0),f1*r.v+f0*(r.sl||0)]};
+function setVel(r,vx,vz){r.v=Math.max(0,vx*Math.sin(r.h)+vz*Math.cos(r.h));r.sl=clamp(-vx*Math.cos(r.h)+vz*Math.sin(r.h),-16,16)}
 function collide(a,b){
   if(Math.hypot(a.x-b.x,a.z-b.z)>HL*2+1)return;
   const A=circ(a),B=circ(b);let best=0,nx=0,nz=0;
   for(const p of A)for(const q of B){const dx=q[0]-p[0],dz=q[1]-p[1],d=Math.hypot(dx,dz),pen=2*RC-d;if(pen>best&&d>.001){best=pen;nx=dx/d;nz=dz/d}}
   if(best>0){const wa=a.remote?0:1,wb=b.remote?0:1,w=wa+wb;if(!w)return;a.x-=nx*best*wa/w;a.z-=nz*best*wa/w;b.x+=nx*best*wb/w;b.z+=nz*best*wb/w;
-    const fa=Math.sin(a.h)*nx+Math.cos(a.h)*nz;
-    if(fa>.5)a.v*=.97;else if(fa<-.5)b.v*=.97;else{a.v*=.99;b.v*=.99}}
+    // momentum exchange along the contact normal; shielded karts are heavier, a remote driver's own client handles their half
+    const ia=a.remote?0:1/(a.shield>0?2:1),ib=b.remote?0:1/(b.shield>0?2:1),va=velOf(a),vb=velOf(b),vr=(vb[0]-va[0])*nx+(vb[1]-va[1])*nz;
+    if(vr<0){const j=-1.4*vr/(ia+ib)*(a.remote||b.remote?.55:1);
+      if(ia)setVel(a,va[0]-j*ia*nx,va[1]-j*ia*nz);if(ib)setVel(b,vb[0]+j*ib*nx,vb[1]+j*ib*nz);
+      if(vr<-5){const mx=(a.x+b.x)/2,mz=(a.z+b.z)/2;for(let k=0;k<3;k++)spark(mx,.6+Math.random(),mz,'w');if(a===me||b===me)zapShake=Math.max(zapShake,clamp(-vr/50,0,.45))}}}
 }
 const latOf=r=>(r.x-pts[r.idx].x)*rgt[r.idx].x+(r.z-pts[r.idx].z)*rgt[r.idx].z;
 function reset(){
   R.forEach((r,k)=>{const row=k>>1,i=N-12-row*11,lat=k%2?5:-5;
-    Object.assign(r,{idx:i,lap:-1,x:pts[i].x+rgt[i].x*lat,z:pts[i].z+rgt[i].z*lat,h:Math.atan2(tan[i].x,tan[i].z),v:0,spin:0,boost:0,drift:0,charge:0,item:null,prog:-N+i,finished:false,cap:1,shield:0,zap:0,zs:1,zw:false,aiT:Math.random()*2,dr:false,aiItem:null,hold:0});
+    Object.assign(r,{idx:i,lap:-1,x:pts[i].x+rgt[i].x*lat,z:pts[i].z+rgt[i].z*lat,h:Math.atan2(tan[i].x,tan[i].z),v:0,spin:0,boost:0,drift:0,charge:0,item:null,prog:-N+i,finished:false,cap:1,shield:0,zap:0,zs:1,zw:false,sl:0,pitch:0,pv:0,aiT:Math.random()*2,dr:false,aiItem:null,hold:0});
     r.m.rotation.set(0,0,0);r.fl.visible=false;r.tx=r.x;r.tz=r.z;r.th=r.h;r.tv=0});
   rockets.splice(0).forEach(q=>scene.remove(q.m));
   boxes.forEach(b=>{b.t=0;b.m.visible=true});slicks.splice(0).forEach(s=>scene.remove(s.m));
@@ -723,16 +729,25 @@ function step(r,dt,I){
   const eff=r.drift?r.drift*.8+s*.5:s;r.sa+=(eff-r.sa)*Math.min(1,dt*10);
   let maxV=MAXV*r.cap*(r.boost>0?1.35:1)*(r.zap>0?.6:1);
   if(Math.abs(latOf(r))>HW+.5&&r.boost<=0)maxV*=.45;
-  if(I.gas||r.boost>0)r.v+=38*dt;else r.v-=15*dt;
+  if(I.gas||r.boost>0)r.v+=38*dt*(1-.4*clamp(r.v/Math.max(1,maxV),0,1)**2);else r.v-=15*dt;   // acceleration tapers towards top speed
   if(I.brake)r.v-=60*dt;
   if(r.v>maxV)r.v=Math.max(maxV,r.v-80*dt);
   r.v=Math.max(0,r.v);r.boost=Math.max(0,r.boost-dt);
-  r.h-=eff*1.8*Math.min(1,r.v/15)*(1-.25*sp)*(r.drift?1.35:1)*dt;
-  r.x+=Math.sin(r.h)*r.v*dt;r.z+=Math.cos(r.h)*r.v*dt;
+  const yaw=eff*1.8*Math.min(1,r.v/15)*(1-.25*sp)*(r.drift?1.35:1);r.h-=yaw*dt;
+  // tyre grip: sideways slip builds up in corners (most while drifting or off the tarmac) and fades as the tyres bite again
+  const off=Math.abs(latOf(r))>HW+.5,grip=r.spin>0?3:r.drift?7:off?9:28;
+  r.sl=clamp(((r.sl||0)-r.v*yaw*(r.drift?.3:off?.3:.25)*dt)*Math.exp(-grip*dt),-16,16);
+  r.x+=(Math.sin(r.h)*r.v-Math.cos(r.h)*r.sl)*dt;r.z+=(Math.cos(r.h)*r.v+Math.sin(r.h)*r.sl)*dt;
   const ni=nearest(r),d=ni-r.idx;if(d<-N/2)r.lap++;else if(d>N/2)r.lap--;
   r.idx=ni;r.prog=r.lap*N+ni;
   const lat=latOf(r),lim=HW+9;
-  if(Math.abs(lat)>lim){const ex=lat-Math.sign(lat)*lim;r.x-=rgt[ni].x*ex;r.z-=rgt[ni].z*ex;r.v*=Math.pow(.02,dt)}
+  if(Math.abs(lat)>lim){const sg=Math.sign(lat),ex=lat-sg*lim;r.x-=rgt[ni].x*ex;r.z-=rgt[ni].z*ex;
+    let[vx,vz]=velOf(r);const ox=rgt[ni].x*sg,oz=rgt[ni].z*sg,vn=vx*ox+vz*oz;   // vn = speed into the barrier
+    if(vn>0){vx-=1.35*vn*ox;vz-=1.35*vn*oz;const hs=clamp(vn/18,0,1);vx*=1-.2*hs;vz*=1-.2*hs;   // bounce, harder hits lose more speed
+      if(vn>6){for(let k=0;k<3;k++)spark(r.x+ox*2+(Math.random()-.5)*2,.5+Math.random(),r.z+oz*2+(Math.random()-.5)*2,'o');if(r===me)zapShake=Math.max(zapShake,clamp(vn/45,0,.55))}}
+    vx*=Math.pow(.5,dt);vz*=Math.pow(.5,dt);   // scrape friction
+    const ht=Math.atan2(tan[ni].x,tan[ni].z);let dh=ht-r.h;dh=Math.atan2(Math.sin(dh),Math.cos(dh));r.h+=dh*Math.min(1,5*dt);   // nose swings along the wall
+    setVel(r,vx,vz)}
   r.roll+=((-eff*.1)-r.roll)*Math.min(1,dt*8);
   if(!r.finished&&r.prog>=LAPS*N){r.finished=true;r.fin=raceT}
 }
@@ -775,7 +790,8 @@ function update(dt){
   for(const r of R){r.zap=Math.max(0,r.zap-dt);if(!r.remote)r.shield=Math.max(0,r.shield-dt);r.sh.visible=r.shield>0;zapScale(r,dt)}
   boltStep(dt);rocketStep(dt);padStep();netTick(dt);if((crowdF++&1)===0)animCrowd(time,cam.position.x,cam.position.z);
   for(const s of sparks){if(s.t<=0)continue;s.t-=dt;s.vy-=14*dt;const p=s.m.position;p.x+=s.vx*dt;p.y=Math.max(.1,p.y+s.vy*dt);p.z+=s.vz*dt;if(s.t<=0)s.m.visible=false}
-  for(const r of R){r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;r.m.rotation.z=r.roll;r.m.rotation.y=r.spin>0?r.spin*14:0;r.fl.visible=r.boost>0;r.fl.scale.set(FK,FK,FK*(.8+Math.random()*.5));for(const t of r.tires){t.sp.rotation.x+=r.v*dt/(.92*S);if(t.front)t.st.rotation.y=-r.sa*.45}}
+  for(const r of R){const ax=(r.v-(r.pv||0))/Math.max(dt,.001);r.pv=r.v;r.pitch=(r.pitch||0)+(clamp(-ax*.0009,-.08,.08)-(r.pitch||0))*Math.min(1,dt*8);   // nose lifts under power, dips under braking
+    r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;r.m.rotation.z=r.roll;r.m.rotation.x=r.pitch;r.m.rotation.y=r.spin>0?r.spin*14:0;r.fl.visible=r.boost>0;r.fl.scale.set(FK,FK,FK*(.8+Math.random()*.5));for(const t of r.tires){t.sp.rotation.x+=r.v*dt/(.92*S);if(t.front)t.st.rotation.y=-r.sa*.45}}
   // camera
   let dh=me.h-ch;dh=Math.atan2(Math.sin(dh),Math.cos(dh));ch+=dh*(1-Math.exp(-5*dt));
   const tx=me.x-Math.sin(ch)*14,tz=me.z-Math.cos(ch)*14,k=state==='count'?1:1-Math.exp(-9*dt);

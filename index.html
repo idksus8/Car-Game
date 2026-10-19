@@ -62,7 +62,8 @@ kbd{font:600 11px var(--b);padding:2px 6px;border:1px solid var(--line);border-b
 #touch button.w{width:96px}
 #touch button:active{background:var(--acc);border-color:var(--acc)}
 @media (hover:none){#touch{display:flex}}
-#vig,#fx{position:fixed;inset:0;pointer-events:none}
+#vig,#fx,#zapf{position:fixed;inset:0;pointer-events:none}
+#zapf{opacity:0;background:radial-gradient(ellipse at center,rgba(255,255,255,.96) 0,rgba(176,218,255,.9) 100%)}
 #vig{background:radial-gradient(ellipse at center,transparent 62%,rgba(6,8,12,.35) 100%)}
 #fx{background:radial-gradient(ellipse at center,transparent 50%,rgba(255,150,70,.35) 100%);opacity:0;transition:opacity .12s}
 #draw{position:fixed;inset:0;display:none;flex-direction:column;background:var(--bg);z-index:5}
@@ -80,7 +81,7 @@ kbd{font:600 11px var(--b);padding:2px 6px;border:1px solid var(--line);border-b
 </head>
 <body>
 <canvas id="gl" role="img" aria-label="Turbo Karts 3D race view"></canvas>
-<div id="vig"></div><div id="fx"></div>
+<div id="vig"></div><div id="fx"></div><div id="zapf"></div>
 <div id="hud">
   <div id="place"></div><div id="lap"></div><canvas id="mm" width="110" height="110"></canvas>
   <div id="spd"></div><div id="item"></div><div id="dbar"><i></i></div><div id="msg" aria-live="polite"></div>
@@ -321,7 +322,7 @@ function useItem(r,k){
   else if(k==='oil'){const x=r.x-s*(HL+2),z=r.z-c*(HL+2),id=r.id+'s'+uid++;dropSlick(x,z,id);net({t:'slick',id,x,z})}
   else if(k==='rocket'){const t=R.filter(o=>o.prog>r.prog).sort((a,b)=>a.prog-b.prog)[0],id=r.id+'r'+uid++,x=r.x+s*(HL+2),z=r.z+c*(HL+2);
     launch(id,r.id,t&&t.id,x,z,r.h);net({t:'rocket',id,own:r.id,tg:t&&t.id,x,z,h:r.h})}
-  else if(k==='zap'){R.forEach(o=>{if(o!==r)o.zap=3.5});net({t:'zap',from:r.id})}
+  else if(k==='zap'){zapAll(r);net({t:'zap',from:r.id})}
 }
 function rocketStep(dt){
   for(let i=rockets.length-1;i>=0;i--){const q=rockets[i];q.t-=dt;q.idx=nearest(q);
@@ -360,6 +361,42 @@ function smokeStep(dt){
   for(const q of smoke){if(q.t<=0)continue;q.t-=dt;const k=1-q.t/q.life,p=q.s.position;p.x+=q.vx*dt;p.y+=q.vy*dt;p.z+=q.vz*dt;
     const z=q.sz*(1+k*1.8);q.s.scale.set(z,z,1);q.s.material.opacity=Math.max(0,q.a*(1-k));if(q.t<=0)q.s.visible=false}
 }
+// ---------- lightning: zap item strikes every rival, shrinks them, then they pop back to size
+const bolts=[],bgeo=new THREE.CylinderGeometry(1,1,1,5,1,true),
+  bmat={core:new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}),
+        glow:new THREE.MeshBasicMaterial({color:0x7cc8ff,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,fog:false})},
+  _up=new THREE.Vector3(0,1,0),_dv=new THREE.Vector3();
+let zapFlash=0,zapAmp=0,zapShake=0;
+function seg(a,b,rad,mat,g){_dv.subVectors(b,a);const len=_dv.length(),m=new THREE.Mesh(bgeo,mat);m.position.addVectors(a,b).multiplyScalar(.5);
+  m.quaternion.setFromUnitVectors(_up,_dv.normalize());m.scale.set(rad,len,rad);m.frustumCulled=false;g.add(m)}
+function buildBolt(x,z){const g=new THREE.Group(),n=14,P=[],sx=x+(Math.random()-.5)*44,sz=z+(Math.random()-.5)*44;
+  for(let i=0;i<=n;i++){const f=i/n,w=i===0||i===n?0:1+6*Math.sin(Math.PI*f);
+    P.push(new THREE.Vector3(sx+(x-sx)*f+(Math.random()-.5)*w,125*(1-f)+2*f,sz+(z-sz)*f+(Math.random()-.5)*w))}
+  for(let i=0;i<n;i++){seg(P[i],P[i+1],1.25,bmat.glow,g);seg(P[i],P[i+1],.38,bmat.core,g)}
+  const k=4+(Math.random()*5|0),b0=P[k],b1=b0.clone().add(new THREE.Vector3((Math.random()-.5)*34,-22-Math.random()*16,(Math.random()-.5)*34));
+  seg(b0,b1,.7,bmat.glow,g);seg(b0,b1,.2,bmat.core,g);return g}
+function strike(r){bolts.push({r,t:.55,nx:0,g:null});
+  puff(r.x,2.2,r.z,'#cfe9ff',.95,11,.35,true);puff(r.x,1.2,r.z,'#ffffff',.9,6,.2,true);
+  for(let i=0;i<8;i++)spark(r.x+(Math.random()-.5)*2,1+Math.random()*2,r.z+(Math.random()-.5)*2,i&1?'b':'w')}
+function zapAll(from){let hitMe=false;
+  R.forEach(o=>{if(o!==from){o.zap=3.5;strike(o);if(o===me)hitMe=true}});
+  zapFlash=1;zapAmp=hitMe?.8:.35;if(hitMe)zapShake=1}
+function boltStep(dt){let top=0;
+  for(let i=bolts.length-1;i>=0;i--){const b=bolts[i];b.t-=dt;b.nx-=dt;top=Math.max(top,b.t);
+    if(b.t<=0){if(b.g)scene.remove(b.g);bolts.splice(i,1);continue}
+    if(b.nx<=0){if(b.g)scene.remove(b.g);b.g=buildBolt(b.r.x,b.r.z);scene.add(b.g);b.nx=.055}}
+  const a=Math.min(1,top*4)*(Math.random()<.18?.45:1);bmat.core.opacity=a;bmat.glow.opacity=a*.6;
+  zapFlash=Math.max(0,zapFlash-dt*2.4);zapShake=Math.max(0,zapShake-dt*2.2);
+  $('zapf').style.opacity=zapFlash>0?String(zapFlash*zapAmp*(Math.sin(zapFlash*38)>-.35?1:.35)):'0'}
+// shrink/regrow animation: electrocuted flicker, squash down to 70%, blink as it wears off, then pop back
+function zapScale(r,dt){
+  if(r.zap>0){const e=3.5-r.zap;r.zw=true;
+    if(Math.random()<(e<.5?.9:.22))spark(r.x+(Math.random()-.5)*3,.8+Math.random()*2.2,r.z+(Math.random()-.5)*3,Math.random()<.5?'b':'w');
+    let tg=.7;if(e<.45)tg=Math.sin(e*75)>0?1.14:.45;else if(r.zap<1)tg=.7+(Math.sin(r.zap*44)>0?.18:0);
+    r.zs+=(tg-r.zs)*(1-Math.exp(-(e<.45?45:14)*dt))}
+  else{if(r.zw){r.zw=false;r.zs=1.28;puff(r.x,1.5,r.z,'#ffe27a',.8,6,.4,true)}
+    r.zs+=(1-r.zs)*(1-Math.exp(-12*dt))}
+  r.g.scale.setScalar(r.zs)}
 // ---------- input
 const keys={},pressed={},T={l:0,r:0,drift:0,itemP:false,auto:false};
 addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.code.startsWith('Arrow')||e.code==='Space')e.preventDefault();if(!keys[e.code])pressed[e.code]=true;keys[e.code]=true;if(e.code==='Enter')start()});
@@ -384,7 +421,7 @@ function collide(a,b){
 const latOf=r=>(r.x-pts[r.idx].x)*rgt[r.idx].x+(r.z-pts[r.idx].z)*rgt[r.idx].z;
 function reset(){
   R.forEach((r,k)=>{const row=k>>1,i=N-12-row*11,lat=k%2?5:-5;
-    Object.assign(r,{idx:i,lap:-1,x:pts[i].x+rgt[i].x*lat,z:pts[i].z+rgt[i].z*lat,h:Math.atan2(tan[i].x,tan[i].z),v:0,spin:0,boost:0,drift:0,charge:0,item:null,prog:-N+i,finished:false,cap:1,shield:0,zap:0,aiT:5+Math.random()*8,dr:false,aiItem:null,hold:0});
+    Object.assign(r,{idx:i,lap:-1,x:pts[i].x+rgt[i].x*lat,z:pts[i].z+rgt[i].z*lat,h:Math.atan2(tan[i].x,tan[i].z),v:0,spin:0,boost:0,drift:0,charge:0,item:null,prog:-N+i,finished:false,cap:1,shield:0,zap:0,zs:1,zw:false,aiT:5+Math.random()*8,dr:false,aiItem:null,hold:0});
     r.m.rotation.set(0,0,0);r.fl.visible=false;r.tx=r.x;r.tz=r.z;r.th=r.h;r.tv=0});
   rockets.splice(0).forEach(q=>scene.remove(q.m));
   boxes.forEach(b=>{b.t=0;b.m.visible=true});slicks.splice(0).forEach(s=>scene.remove(s.m));
@@ -466,7 +503,7 @@ function handle(m){switch(m.t){
   case'rocket':launch(m.id,m.own,m.tg,m.x,m.z,m.h);break;
   case'rkm':{const i=rockets.findIndex(q=>q.id===m.id);if(i>=0){scene.remove(rockets[i].m);rockets.splice(i,1)}break}
   case'hit':{const v=byId[m.to];if(m.to===me.id)hurt(me,m.d);else if(isHost&&v&&!v.remote)hurt(v,m.d);break}
-  case'zap':{const f=byId[m.from];R.forEach(o=>{if(o!==f)o.zap=3.5});break}}}
+  case'zap':zapAll(byId[m.from]);break}}
 function netTick(dt){if(!MP||state==='ready'||state==='wait'||state==='draw')return;sendT+=dt;if(sendT<.05)return;sendT=0;
   for(const r of R){if(r.remote)continue;net({t:'s',i:r.id,x:+r.x.toFixed(2),z:+r.z.toFixed(2),h:+r.h.toFixed(3),v:+r.v.toFixed(1),a:+r.sa.toFixed(2),b:r.boost>0?1:0,d:r.drift,sp:r.spin>0?r.spin:0,l:r.lap,p:r.prog,sh:r.shield>0?1:0,f:r.finished?1:0})}}
 try{$('nm').value=localStorage.getItem('tk-name')||''}catch(e){}
@@ -622,14 +659,15 @@ function update(dt){
       spark(me.x+lx*c+lz*s,.3,me.z-lx*s+lz*c,me.charge>1.8?'o':me.charge>.9?'b':'w')}
   }
   smokeStep(dt);
-  for(const r of R){r.zap=Math.max(0,r.zap-dt);if(!r.remote)r.shield=Math.max(0,r.shield-dt);r.sh.visible=r.shield>0;r.g.scale.setScalar(r.zap>0?.7:1)}
-  rocketStep(dt);padStep();netTick(dt);if((crowdF++&1)===0)animCrowd(time,cam.position.x,cam.position.z);
+  for(const r of R){r.zap=Math.max(0,r.zap-dt);if(!r.remote)r.shield=Math.max(0,r.shield-dt);r.sh.visible=r.shield>0;zapScale(r,dt)}
+  boltStep(dt);rocketStep(dt);padStep();netTick(dt);if((crowdF++&1)===0)animCrowd(time,cam.position.x,cam.position.z);
   for(const s of sparks){if(s.t<=0)continue;s.t-=dt;s.vy-=14*dt;const p=s.m.position;p.x+=s.vx*dt;p.y=Math.max(.1,p.y+s.vy*dt);p.z+=s.vz*dt;if(s.t<=0)s.m.visible=false}
   for(const r of R){r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;r.m.rotation.z=r.roll;r.m.rotation.y=r.spin>0?r.spin*14:0;r.fl.visible=r.boost>0;r.fl.scale.set(FK,FK,FK*(.8+Math.random()*.5));for(const t of r.tires){t.sp.rotation.x+=r.v*dt/(.92*S);if(t.front)t.st.rotation.y=-r.sa*.45}}
   // camera
   let dh=me.h-ch;dh=Math.atan2(Math.sin(dh),Math.cos(dh));ch+=dh*(1-Math.exp(-5*dt));
   const tx=me.x-Math.sin(ch)*14,tz=me.z-Math.cos(ch)*14,k=state==='count'?1:1-Math.exp(-9*dt);
   cam.position.x+=(tx-cam.position.x)*k;cam.position.y+=(6.8-cam.position.y)*k;cam.position.z+=(tz-cam.position.z)*k;
+  if(zapShake>0){cam.position.x+=(Math.random()-.5)*zapShake*1.4;cam.position.y+=(Math.random()-.5)*zapShake*.9;cam.position.z+=(Math.random()-.5)*zapShake*1.4}
   cam.lookAt(me.x+Math.sin(ch)*12,2.2,me.z+Math.cos(ch)*12);
   sun.position.set(me.x+SUN.x*160,SUN.y*160,me.z+SUN.z*160);sun.target.position.set(me.x,0,me.z);sky.position.copy(cam.position);
   $('fx').style.opacity=String(me.boost>0?.8:clamp((me.v/MAXV-.85)*3,0,.3));

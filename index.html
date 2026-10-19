@@ -304,7 +304,9 @@ function setName(r,t){const x=r.lc.getContext('2d');x.clearRect(0,0,256,64);x.fo
 const boxes=[],slicks=[];
 function makeBoxes(scene){boxes.length=0;const geo=new THREE.BoxGeometry(2.4,2.4,2.4),mat=new THREE.MeshLambertMaterial({color:0xffd23f,emissive:0x8a5a00});
  [.14,.26,.38,.52,.64,.76].forEach(f=>[-4,4].forEach(l=>{const i=Math.floor(f*N),m=new THREE.Mesh(geo,mat);
-  const x=pts[i].x+rgt[i].x*l,z=pts[i].z+rgt[i].z*l;m.position.set(x,1.8,z);scene.add(m);boxes.push({m,x,z,t:0})}))}
+  const x=pts[i].x+rgt[i].x*l,z=pts[i].z+rgt[i].z*l;m.position.set(x,1.8,z);scene.add(m);boxes.push({m,x,z,t:0,i,l})}))}
+// anyone grabbing a box (player, bot or remote driver) hides it for everybody
+function grabBox(i){const b=boxes[i];b.t=5;b.m.visible=false;net({t:'box',i})}
 const slickGeo=new THREE.CircleGeometry(3,18),slickMat=new THREE.MeshBasicMaterial({color:0x2a1a4a});
 const ITEMS={boost:['<path d="M5 17l7-7 7 7M5 11l7-7 7 7"/>','BOOST'],oil:['<path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/>','OIL'],rocket:['<path d="M12 2c3 3 4 7 4 11l-4 3-4-3c0-4 1-8 4-11zM8 14l-3 4 4-1M16 14l3 4-4-1"/>','ROCKET'],shield:['<path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/>','SHIELD'],zap:['<path d="M13 2L5 14h6l-1 8 8-12h-6z"/>','ZAP']};
 function pickItem(rk){const w=rk===1?{boost:3,oil:3,shield:3,rocket:1}:rk<4?{boost:3,oil:2,rocket:3,shield:2,zap:1}:{boost:3,rocket:3,shield:1,zap:3,oil:1};
@@ -421,7 +423,7 @@ function collide(a,b){
 const latOf=r=>(r.x-pts[r.idx].x)*rgt[r.idx].x+(r.z-pts[r.idx].z)*rgt[r.idx].z;
 function reset(){
   R.forEach((r,k)=>{const row=k>>1,i=N-12-row*11,lat=k%2?5:-5;
-    Object.assign(r,{idx:i,lap:-1,x:pts[i].x+rgt[i].x*lat,z:pts[i].z+rgt[i].z*lat,h:Math.atan2(tan[i].x,tan[i].z),v:0,spin:0,boost:0,drift:0,charge:0,item:null,prog:-N+i,finished:false,cap:1,shield:0,zap:0,zs:1,zw:false,aiT:5+Math.random()*8,dr:false,aiItem:null,hold:0});
+    Object.assign(r,{idx:i,lap:-1,x:pts[i].x+rgt[i].x*lat,z:pts[i].z+rgt[i].z*lat,h:Math.atan2(tan[i].x,tan[i].z),v:0,spin:0,boost:0,drift:0,charge:0,item:null,prog:-N+i,finished:false,cap:1,shield:0,zap:0,zs:1,zw:false,aiT:Math.random()*2,dr:false,aiItem:null,hold:0});
     r.m.rotation.set(0,0,0);r.fl.visible=false;r.tx=r.x;r.tz=r.z;r.th=r.h;r.tv=0});
   rockets.splice(0).forEach(q=>scene.remove(q.m));
   boxes.forEach(b=>{b.t=0;b.m.visible=true});slicks.splice(0).forEach(s=>scene.remove(s.m));
@@ -503,6 +505,7 @@ function handle(m){switch(m.t){
   case'rocket':launch(m.id,m.own,m.tg,m.x,m.z,m.h);break;
   case'rkm':{const i=rockets.findIndex(q=>q.id===m.id);if(i>=0){scene.remove(rockets[i].m);rockets.splice(i,1)}break}
   case'hit':{const v=byId[m.to];if(m.to===me.id)hurt(me,m.d);else if(isHost&&v&&!v.remote)hurt(v,m.d);break}
+  case'box':{const b=boxes[m.i];if(b){b.t=5;b.m.visible=false}break}
   case'zap':zapAll(byId[m.from]);break}}
 function netTick(dt){if(!MP||state==='ready'||state==='wait'||state==='draw')return;sendT+=dt;if(sendT<.05)return;sendT=0;
   for(const r of R){if(r.remote)continue;net({t:'s',i:r.id,x:+r.x.toFixed(2),z:+r.z.toFixed(2),h:+r.h.toFixed(3),v:+r.v.toFixed(1),a:+r.sa.toFixed(2),b:r.boost>0?1:0,d:r.drift,sp:r.spin>0?r.spin:0,l:r.lap,p:r.prog,sh:r.shield>0?1:0,f:r.finished?1:0})}}
@@ -652,6 +655,8 @@ addEventListener('resize',()=>{if(state==='draw'){sizeDraw();paintDraw()}});
 function aiInput(r){
   const i=r.idx,v=r.v,sp=v/MAXV,ti=(i+6+(v*.2|0)+(r.sk>.8?2:0))%N;
   let lane=(LINE[ti]*.9+r.lane*.35)*HW*.7;
+  if(!r.aiItem&&r.aiT<=0){let nb=null;for(const b of boxes){if(b.t>0)continue;const ah=(b.i-i+N)%N;if(ah>6&&ah<50&&(!nb||ah<nb.ah))nb={ah,l:b.l}}
+    if(nb)lane=lane*.25+nb.l*.75}
   const sn=Math.sin(r.h),cs=Math.cos(r.h);let av=0,blk=0;
   for(const o of R){if(o===r)continue;const dx=o.x-r.x,dz=o.z-r.z,f=dx*sn+dz*cs,sd=-dx*cs+dz*sn;
     if(f>0&&f<24&&Math.abs(sd)<4.2){const w=(1-f/24)*(1+Math.max(0,(v-o.v)/20));av+=(sd>=0?-1:1)*w*5.5;if(f<14)blk=Math.max(blk,1-f/14)}}
@@ -668,14 +673,15 @@ function aiInput(r){
 }
 function aiItem(a,dt){
   if(a.finished)return;
-  if(!a.aiItem){a.aiT-=dt;if(a.aiT<=0){a.aiItem=pickItem(rankOf(a));a.hold=0}return}
+  if(!a.aiItem){a.aiT-=dt;if(a.aiT>0)return;
+    for(let i=0;i<boxes.length;i++){const b=boxes[i];if(b.t>0)continue;if(hit(a,b.x,b.z,1.2+RC)){grabBox(i);a.aiItem=pickItem(rankOf(a));a.hold=0;break}}return}
   a.hold+=dt;const k=a.aiItem;let use=a.hold>14;
   if(k==='boost')use=use||(cur[(a.idx+8)%N]<.12&&a.hold>.5);
   else if(k==='rocket')use=use||R.some(o=>o!==a&&o.prog>a.prog&&o.prog-a.prog<45);
   else if(k==='oil')use=use||R.some(o=>o!==a&&o.prog<a.prog&&a.prog-o.prog<8&&Math.abs(latOf(o)-latOf(a))<6);
   else if(k==='shield')use=use||rockets.some(q=>q.tg===a.id&&Math.hypot(q.x-a.x,q.z-a.z)<45);
   else if(k==='zap')use=use||(rankOf(a)>=3&&a.hold>1);
-  if(use){useItem(a,k);a.aiItem=null;a.aiT=4+Math.random()*6}
+  if(use){useItem(a,k);a.aiItem=null;a.aiT=1+Math.random()*2}
 }
 function step(r,dt,I){
   const sp=r.v/MAXV;let s=I.steer;
@@ -721,8 +727,8 @@ function update(dt){
         steer:((keys.ArrowRight||keys.KeyD||T.r)?1:0)-((keys.ArrowLeft||keys.KeyA||T.l)?1:0)};
       step(me,dt,I);
       if((pressed.Space||pressed.KeyX||T.itemP)&&me.item){useItem(me,me.item);me.item=null}
-      for(const b of boxes){if(b.t>0||me.item)continue;
-        if(hit(me,b.x,b.z,1.2+RC)){b.t=5;b.m.visible=false;me.item=pickItem(rankOf(me))}}
+      for(let i=0;i<boxes.length;i++){const b=boxes[i];if(b.t>0||me.item)continue;
+        if(hit(me,b.x,b.z,1.2+RC)){grabBox(i);me.item=pickItem(rankOf(me))}}
       if(me.finished){place=rankOf(me);finT=me.fin;showEnd()}
     }
     // slicks + collisions

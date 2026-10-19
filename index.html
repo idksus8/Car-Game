@@ -303,8 +303,8 @@ function setName(r,t){const x=r.lc.getContext('2d');x.clearRect(0,0,256,64);x.fo
 // items
 const boxes=[],slicks=[];
 function makeBoxes(scene){boxes.length=0;const geo=new THREE.BoxGeometry(2.4,2.4,2.4),mat=new THREE.MeshLambertMaterial({color:0xffd23f,emissive:0x8a5a00});
- for(let k=0;k<10;k++)[-6,0,6].forEach(l=>{const i=Math.floor(k*N/10+N/20),m=new THREE.Mesh(geo,mat);
-  const x=pts[i].x+rgt[i].x*l,z=pts[i].z+rgt[i].z*l;m.position.set(x,1.8,z);scene.add(m);boxes.push({m,x,z,t:0})})}
+ [.14,.26,.38,.52,.64,.76].forEach(f=>[-4,4].forEach(l=>{const i=Math.floor(f*N),m=new THREE.Mesh(geo,mat);
+  const x=pts[i].x+rgt[i].x*l,z=pts[i].z+rgt[i].z*l;m.position.set(x,1.8,z);scene.add(m);boxes.push({m,x,z,t:0})}))}
 const slickGeo=new THREE.CircleGeometry(3,18),slickMat=new THREE.MeshBasicMaterial({color:0x2a1a4a});
 const ITEMS={boost:['<path d="M5 17l7-7 7 7M5 11l7-7 7 7"/>','BOOST'],oil:['<path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/>','OIL'],rocket:['<path d="M12 2c3 3 4 7 4 11l-4 3-4-3c0-4 1-8 4-11zM8 14l-3 4 4-1M16 14l3 4-4-1"/>','ROCKET'],shield:['<path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/>','SHIELD'],zap:['<path d="M13 2L5 14h6l-1 8 8-12h-6z"/>','ZAP']};
 function pickItem(rk){const w=rk===1?{boost:3,oil:3,shield:3,rocket:1}:rk<4?{boost:3,oil:2,rocket:3,shield:2,zap:1}:{boost:3,rocket:3,shield:1,zap:3,oil:1};

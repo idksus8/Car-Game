@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="theme-color" content="#0d1015">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Turbo Karts 3D</title>
+<title>Car Game</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d1015'/%3E%3Cpath d='M7 22l5-12h13l-3 6h-6l-1 6z' fill='%23ff4d2e'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
@@ -84,12 +84,12 @@ kbd{font:600 11px var(--b);padding:2px 6px;border:1px solid var(--line);border-b
 </style>
 </head>
 <body>
-<canvas id="gl" role="img" aria-label="Turbo Karts 3D race view"></canvas>
+<canvas id="gl" role="img" aria-label="Car Game race view"></canvas>
 <div id="vig"></div><div id="fx"></div><div id="zapf"></div>
 <div id="hud">
   <div id="place"></div><div id="lap"></div><canvas id="mm" width="110" height="110"></canvas>
   <div id="spd"></div><div id="item"></div><div id="dbar"><i></i></div><div id="toast" aria-live="polite"></div><div id="msg" aria-live="polite"></div>
-  <div id="menu"><div class="eyebrow">Circuit Grand Prix · 3 laps</div><h1>Turbo Karts</h1>
+  <div id="menu"><div class="eyebrow">Circuit Grand Prix · 3 laps</div><h1>Car Game</h1>
     <p id="mp">Draw your own circuit before every solo race, or race up to five friends online, where a random driver draws the track each round. Collect items from the gold boxes, hit blue pads and link drifts for mini-turbos.</p>
     <div id="kb"><b>Steer</b><span><kbd>←</kbd><kbd>→</kbd> or <kbd>A</kbd><kbd>D</kbd></span><b>Throttle / brake</b><span><kbd>↑</kbd><kbd>↓</kbd> or <kbd>W</kbd><kbd>S</kbd></span><b>Drift</b><span><kbd>Shift</kbd> or <kbd>Z</kbd></span><b>Use item</b><span><kbd>Space</kbd> or <kbd>X</kbd></span></div>
     <input id="nm" maxlength="10" placeholder="Driver name" autocomplete="off">
@@ -203,7 +203,7 @@ ribbon(HW,HW+2.2,.07,i=>(i>>1)%2?0xe63946:0xffffff);
  const c=document.createElement('canvas');c.width=1024;c.height=72;const x=c.getContext('2d');
  x.fillStyle='#e63946';x.fillRect(0,0,1024,72);
  for(let i=0;i<48;i++)for(let j=0;j<3;j++){x.fillStyle=(i+j)%2?'#fff':'#111';x.fillRect(i*10.7,j*24,10.7,24);x.fillRect(1024-(i+1)*10.7+(i>11?9999:0),j*24,10.7,24)}
- x.fillStyle='#e63946';x.fillRect(150,0,724,72);x.fillStyle='#fff7e0';x.font='bold 54px Impact,sans-serif';x.textAlign='center';x.fillText('TURBO KARTS',512,56);
+ x.fillStyle='#e63946';x.fillRect(150,0,724,72);x.fillStyle='#fff7e0';x.font='bold 54px Impact,sans-serif';x.textAlign='center';x.fillText('CAR GAME',512,56);
  const tex=new THREE.CanvasTexture(c);tex.anisotropy=maxA;
  [-1,1].forEach(s=>{const p=new THREE.Mesh(new THREE.BoxGeometry(1.2,10,1.2),m(0x333344));p.position.set(s*(HW+3),5,0);p.castShadow=true;g.add(p)});
  const b=new THREE.Mesh(new THREE.BoxGeometry(2*HW+8,2.8,1.2),new THREE.MeshLambertMaterial({map:tex}));b.position.y=10.2;b.castShadow=true;g.add(b);

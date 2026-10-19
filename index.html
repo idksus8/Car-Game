@@ -100,7 +100,7 @@ kbd{font:600 11px var(--b);padding:2px 6px;border:1px solid var(--line);border-b
   <div id="spd"></div><div id="item"></div><div id="dbar"><i></i></div><div id="warn"><div class="rim"></div><div class="tx">ROCKET INCOMING<small></small></div><div class="ar"><svg viewBox="0 0 24 24"><path d="M12 2l9 19-9-5-9 5z"/></svg></div></div><div id="toast" aria-live="polite"></div><div id="msg" aria-live="polite"></div>
   <div id="menu"><div class="eyebrow">Circuit Grand Prix · 3 laps</div><h1>Car Game <small class="by">by Lou</small></h1>
     <p id="mp">Draw your own circuit before every solo race, or race up to five friends online, where a random driver draws the track each round. Collect items from the gold boxes, hit blue pads and link drifts for mini-turbos.</p>
-    <div id="kb"><b>Steer</b><span><kbd>←</kbd><kbd>→</kbd> or <kbd>A</kbd><kbd>D</kbd></span><b>Throttle / brake</b><span><kbd>↑</kbd><kbd>↓</kbd> or <kbd>W</kbd><kbd>S</kbd></span><b>Drift</b><span><kbd>Shift</kbd> or <kbd>Z</kbd></span><b>Use item</b><span><kbd>Space</kbd> or <kbd>X</kbd></span></div>
+    <div id="kb"><b>Steer</b><span><kbd>←</kbd><kbd>→</kbd> or <kbd>A</kbd><kbd>D</kbd></span><b>Throttle / brake</b><span><kbd>↑</kbd><kbd>↓</kbd> or <kbd>W</kbd><kbd>S</kbd></span><b>Drift</b><span><kbd>Shift</kbd> or <kbd>Z</kbd></span><b>Use item</b><span><kbd>Space</kbd> or <kbd>X</kbd></span><b>Look back</b><span>Hold <kbd>Ctrl</kbd></span></div>
     <input id="nm" maxlength="10" placeholder="Driver name" autocomplete="off">
     <div class="row"><button id="go" type="button">Solo race</button><button id="host" type="button">Host online</button></div>
     <div class="row" id="jr"><input id="code" maxlength="4" placeholder="CODE" autocomplete="off"><button id="join" type="button">Join room</button></div>
@@ -455,12 +455,13 @@ function zapScale(r,dt){
 const keys={},pressed={},T={l:0,r:0,drift:0,itemP:false,auto:false};
 addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.code.startsWith('Arrow')||e.code==='Space')e.preventDefault();if(!keys[e.code])pressed[e.code]=true;keys[e.code]=true;if(e.code==='Enter')start()});
 addEventListener('keyup',e=>keys[e.code]=false);
+addEventListener('blur',()=>{keys.ControlLeft=keys.ControlRight=false});
 const hold=(id,k)=>{const b=$(id);b.addEventListener('pointerdown',e=>{e.preventDefault();T.auto=true;T[k]=1});['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>T[k]=0))};
 hold('bl','l');hold('br','r');hold('bd','drift');
 $('bi').addEventListener('pointerdown',e=>{e.preventDefault();T.itemP=true});
 $('go').addEventListener('click',start);
 // ---------- race logic
-let state='ready',cd=0,raceT=0,time=0,ch=0,place=0,finT=0;
+let state='ready',cd=0,raceT=0,time=0,ch=0,lbk=0,place=0,finT=0;
 function nearest(r){let best=1e18,bi=r.idx;for(let k=-25;k<=25;k++){const i=(r.idx+k+N)%N,dx=r.x-pts[i].x,dz=r.z-pts[i].z,d=dx*dx+dz*dz;if(d<best){best=d;bi=i}}return bi}
 function circ(r){const s=Math.sin(r.h),c=Math.cos(r.h);return HBO.map(o=>[r.x+s*o,r.z+c*o])}
 function hit(r,x,z,rad){return circ(r).some(p=>Math.hypot(p[0]-x,p[1]-z)<rad)}
@@ -720,7 +721,7 @@ function aiInput(r){
   const sn=Math.sin(r.h),cs=Math.cos(r.h);let av=0,blk=0;
   for(const o of R){if(o===r)continue;const dx=o.x-r.x,dz=o.z-r.z,f=dx*sn+dz*cs,sd=-dx*cs+dz*sn;
     if(f>0&&f<24&&Math.abs(sd)<4.2){const w=(1-f/24)*(1+Math.max(0,(v-o.v)/20));av+=(sd>=0?-1:1)*w*5.5;if(f<14)blk=Math.max(blk,1-f/14)}}
-  lane=clamp(lane+clamp(av,-8,8),-HW*.82,HW*.82);
+  lane=clamp(lane+clamp(av,-8,8),-(HW-4),HW-4);
   const tx=pts[ti].x+rgt[ti].x*lane,tz=pts[ti].z+rgt[ti].z*lane;
   let d=Math.atan2(tx-r.x,tz-r.z)-r.h;d=Math.atan2(Math.sin(d),Math.cos(d));
   let steer=clamp(-d*3,-1,1),gas=true,brake=false;
@@ -787,7 +788,10 @@ function update(dt){
       const rel=MP?0:a.prog-me.prog;
       a.cap=a.isMe?.7:a.sp*(rel>0?1-Math.min(.06,rel/500):1+Math.min(.16,-rel/180));
       aiItem(a,dt);
-      step(a,dt,aiInput(a))}
+      step(a,dt,aiInput(a));
+      {const lat=latOf(a),lim=HW-1.9;   // white lines sit at ~HW-0.8: keep the whole kart inside them
+        if(Math.abs(lat)>lim){const sg=Math.sign(lat),ex=lat-sg*lim,ox=rgt[a.idx].x*sg,oz=rgt[a.idx].z*sg;a.x-=rgt[a.idx].x*ex;a.z-=rgt[a.idx].z*ex;
+          let[vx,vz]=velOf(a);const vn=vx*ox+vz*oz;if(vn>0)setVel(a,vx-vn*ox,vz-vn*oz);a.sl=0}}}
     for(const r of R){if(!r.remote)continue;const k=1-Math.exp(-12*dt);
       r.tx+=Math.sin(r.th)*r.tv*dt;r.tz+=Math.cos(r.th)*r.tv*dt;r.x+=(r.tx-r.x)*k;r.z+=(r.tz-r.z)*k;
       let d=r.th-r.h;d=Math.atan2(Math.sin(d),Math.cos(d));r.h+=d*k;r.v=r.tv;r.roll+=((-r.sa*.1)-r.roll)*k}
@@ -818,10 +822,11 @@ function update(dt){
     r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;r.m.rotation.z=r.roll;r.m.rotation.x=r.pitch;r.m.rotation.y=r.spin>0?r.spin*14:0;r.fl.visible=r.boost>0;r.fl.scale.set(FK,FK,FK*(.8+Math.random()*.5));for(const t of r.tires){t.sp.rotation.x+=r.v*dt/(.92*S);if(t.front)t.st.rotation.y=-r.sa*.45}}
   // camera
   let dh=me.h-ch;dh=Math.atan2(Math.sin(dh),Math.cos(dh));ch+=dh*(1-Math.exp(-5*dt));
-  const tx=me.x-Math.sin(ch)*14,tz=me.z-Math.cos(ch)*14,k=state==='count'?1:1-Math.exp(-9*dt);
+  lbk+=((keys.ControlLeft||keys.ControlRight?1:0)-lbk)*(1-Math.exp(-11*dt));const ca=ch+Math.PI*lbk;   // Ctrl swings the camera round to look behind
+  const tx=me.x-Math.sin(ca)*14,tz=me.z-Math.cos(ca)*14,k=state==='count'?1:1-Math.exp(-9*dt);
   cam.position.x+=(tx-cam.position.x)*k;cam.position.y+=(6.8-cam.position.y)*k;cam.position.z+=(tz-cam.position.z)*k;
   if(zapShake>0){cam.position.x+=(Math.random()-.5)*zapShake*1.4;cam.position.y+=(Math.random()-.5)*zapShake*.9;cam.position.z+=(Math.random()-.5)*zapShake*1.4}
-  cam.lookAt(me.x+Math.sin(ch)*12,2.2,me.z+Math.cos(ch)*12);
+  cam.lookAt(me.x+Math.sin(ca)*12,2.2,me.z+Math.cos(ca)*12);
   sun.position.set(me.x+SUN.x*160,SUN.y*160,me.z+SUN.z*160);sun.target.position.set(me.x,0,me.z);sky.position.copy(cam.position);
   $('fx').style.opacity=String(me.boost>0?.8:clamp((me.v/MAXV-.85)*3,0,.3));
   const fov=68+me.v/MAXV*8+(me.boost>0?10:0);cam.fov+=(fov-cam.fov)*Math.min(1,dt*5);cam.updateProjectionMatrix();

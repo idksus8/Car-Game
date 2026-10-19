@@ -33,6 +33,10 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block}
 #item svg{width:28px;height:28px;fill:none;stroke:var(--ink);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 #item small{font:600 10px var(--f);letter-spacing:.14em;color:var(--mute)}
 @media (hover:hover){#spd{bottom:48px}#dbar{bottom:36px}#item{bottom:30px}}
+#toast{left:0;right:0;top:15%;text-align:center;font:italic 700 clamp(26px,5vw,42px)/1 var(--f);letter-spacing:.08em;text-transform:uppercase;opacity:0;transform:translateY(8px);transition:opacity .25s,transform .25s;text-shadow:0 2px 18px rgba(0,0,0,.6)}
+#toast.on{opacity:1;transform:none}
+#toast small{display:block;font:600 13px var(--f);letter-spacing:.3em;margin-bottom:4px}
+#item{transition:border-color .2s,box-shadow .2s}
 #msg{left:0;right:0;top:22%;text-align:center;font:italic 700 clamp(80px,18vw,180px)/1 var(--f);color:#fff;text-shadow:0 4px 40px rgba(0,0,0,.45)}
 #menu{inset:0;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:12px;padding:24px clamp(20px,7vw,120px);box-sizing:border-box;overflow:auto;background:linear-gradient(90deg,rgba(8,10,14,.94) 0,rgba(8,10,14,.82) 40%,rgba(8,10,14,.25) 75%,rgba(8,10,14,.08));pointer-events:auto!important}
 @media (max-width:700px){#menu{background:rgba(8,10,14,.92);justify-content:flex-start;padding-top:max(28px,env(safe-area-inset-top))}}
@@ -84,7 +88,7 @@ kbd{font:600 11px var(--b);padding:2px 6px;border:1px solid var(--line);border-b
 <div id="vig"></div><div id="fx"></div><div id="zapf"></div>
 <div id="hud">
   <div id="place"></div><div id="lap"></div><canvas id="mm" width="110" height="110"></canvas>
-  <div id="spd"></div><div id="item"></div><div id="dbar"><i></i></div><div id="msg" aria-live="polite"></div>
+  <div id="spd"></div><div id="item"></div><div id="dbar"><i></i></div><div id="toast" aria-live="polite"></div><div id="msg" aria-live="polite"></div>
   <div id="menu"><div class="eyebrow">Circuit Grand Prix · 3 laps</div><h1>Turbo Karts</h1>
     <p id="mp">Draw your own circuit before every solo race, or race up to five friends online, where a random driver draws the track each round. Collect items from the gold boxes, hit blue pads and link drifts for mini-turbos.</p>
     <div id="kb"><b>Steer</b><span><kbd>←</kbd><kbd>→</kbd> or <kbd>A</kbd><kbd>D</kbd></span><b>Throttle / brake</b><span><kbd>↑</kbd><kbd>↓</kbd> or <kbd>W</kbd><kbd>S</kbd></span><b>Drift</b><span><kbd>Shift</kbd> or <kbd>Z</kbd></span><b>Use item</b><span><kbd>Space</kbd> or <kbd>X</kbd></span></div>
@@ -309,8 +313,17 @@ function makeBoxes(scene){boxes.length=0;const geo=new THREE.BoxGeometry(2.4,2.4
 function grabBox(i){const b=boxes[i];b.t=5;b.m.visible=false;net({t:'box',i})}
 const slickGeo=new THREE.CircleGeometry(3,18),slickMat=new THREE.MeshBasicMaterial({color:0x2a1a4a});
 const ITEMS={boost:['<path d="M5 17l7-7 7 7M5 11l7-7 7 7"/>','BOOST'],oil:['<path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/>','OIL'],rocket:['<path d="M12 2c3 3 4 7 4 11l-4 3-4-3c0-4 1-8 4-11zM8 14l-3 4 4-1M16 14l3 4-4-1"/>','ROCKET'],shield:['<path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/>','SHIELD'],zap:['<path d="M13 2L5 14h6l-1 8 8-12h-6z"/>','ZAP']};
-function pickItem(rk){const w=rk===1?{boost:3,oil:3,shield:3,rocket:1}:rk<4?{boost:3,oil:2,rocket:3,shield:2,zap:1}:{boost:3,rocket:3,shield:1,zap:3,oil:1};
-  let t=0;for(const k in w)t+=w[k];let x=Math.random()*t;for(const k in w){x-=w[k];if(x<0)return k}return'boost'}
+// item rarities: common < rare < legendary. Trailing drivers roll better odds, the leader never rolls legendary.
+const RAR={common:{n:'Common',c:'#c9d1dc'},rare:{n:'Rare',c:'#4aa8ff'},legendary:{n:'Legendary',c:'#ffb020'}},
+  RTIER={common:['boost','oil'],rare:['rocket','shield'],legendary:['zap']},
+  RARITY=Object.fromEntries(Object.entries(RTIER).flatMap(([r,l])=>l.map(k=>[k,r])));
+function pickItem(rk){const w=rk===1?{common:70,rare:30}:rk<4?{common:50,rare:40,legendary:10}:{common:34,rare:41,legendary:25};
+  let t=0;for(const k in w)t+=w[k];let x=Math.random()*t,tier='common';for(const k in w){x-=w[k];if(x<0){tier=k;break}}
+  const l=RTIER[tier];return l[Math.random()*l.length|0]}
+let toastT=0;
+function toast(k){const r=RAR[RARITY[k]],e=$('toast');e.style.color=r.c;e.innerHTML='<small>'+r.n+'</small>'+ITEMS[k][1];e.classList.add('on');
+  clearTimeout(toastT);toastT=setTimeout(()=>e.classList.remove('on'),RARITY[k]==='common'?1100:1700);
+  if(RARITY[k]==='legendary')for(let i=0;i<10;i++)spark(me.x+(Math.random()-.5)*3,1+Math.random()*3,me.z+(Math.random()-.5)*3,'o')}
 let netSend=()=>{};const net=m=>netSend(m);
 const rockets=[],rgeo=new THREE.ConeGeometry(.55,2.6,8),rmat=new THREE.MeshBasicMaterial({color:0xff4a2a});let uid=0;
 function dropSlick(x,z,id){const m=new THREE.Mesh(slickGeo,slickMat);m.rotation.x=-Math.PI/2;m.position.set(x,.1,z);scene.add(m);slicks.push({m,x,z,id})}
@@ -728,7 +741,7 @@ function update(dt){
       step(me,dt,I);
       if((pressed.Space||pressed.KeyX||T.itemP)&&me.item){useItem(me,me.item);me.item=null}
       for(let i=0;i<boxes.length;i++){const b=boxes[i];if(b.t>0||me.item)continue;
-        if(hit(me,b.x,b.z,1.2+RC)){grabBox(i);me.item=pickItem(rankOf(me))}}
+        if(hit(me,b.x,b.z,1.2+RC)){grabBox(i);me.item=pickItem(rankOf(me));toast(me.item)}}
       if(me.finished){place=rankOf(me);finT=me.fin;showEnd()}
     }
     // slicks + collisions
@@ -767,7 +780,9 @@ function hud(){
   const pl=me.finished?place:rankOf(me);put('place','<span class="l">POSITION</span><b>'+pl+'</b><sup>'+ord(pl).slice(String(pl).length)+'</sup><em>/'+R.length+'</em>');
   put('lap','<span>LAP</span><b>'+clamp(me.lap+1,1,LAPS)+'/'+LAPS+'</b><span>TIME</span><b>'+fmt(me.finished?finT:raceT)+'</b>');
   put('spd','<b>'+Math.round(me.v/MAXV*180)+'</b><span>KM/H</span>');
-  {const it=ITEMS[me.item];put('item',it?'<svg viewBox="0 0 24 24">'+it[0]+'</svg><small>'+it[1]+'</small>':'<small>ITEM</small>')}
+  {const it=ITEMS[me.item],rc=it?RAR[RARITY[me.item]].c:'',el=$('item');
+    put('item',it?'<svg viewBox="0 0 24 24" style="stroke:'+rc+'">'+it[0]+'</svg><small style="color:'+rc+'">'+it[1]+'</small>':'<small>ITEM</small>');
+    el.style.borderColor=it?rc:'';el.style.boxShadow=it&&RARITY[me.item]!=='common'?'0 0 18px '+rc+'66':''}
   const f=Math.min(1,me.charge/1.8),db=$('dbar').querySelector('i');db.style.width=f*100+'%';db.style.background=me.charge>1.8?'#ff6a2b':me.charge>.9?'#4aa8ff':'#c9d1dc';
   mm.clearRect(0,0,110,110);mm.strokeStyle='#ffffff55';mm.lineWidth=4;mm.lineJoin='round';mm.beginPath();
   for(let i=0;i<=N;i+=6){const p=pts[i%N];i?mm.lineTo(mx(p.x),mz(p.z)):mm.moveTo(mx(p.x),mz(p.z))}mm.closePath();mm.stroke();

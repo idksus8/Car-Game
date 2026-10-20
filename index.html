@@ -325,9 +325,10 @@ const ITEMS={boost:['<path d="M5 17l7-7 7 7M5 11l7-7 7 7"/>','BOOST'],oil:['<pat
 // item rarities: common < rare < legendary. Trailing drivers roll better odds, the leader never rolls legendary.  
 const RAR={common:{n:'Common',c:'#c9d1dc'},rare:{n:'Rare',c:'#4aa8ff'},legendary:{n:'Legendary',c:'#ffb020'}},  
   RTIER={common:['boost','oil'],rare:['rocket','shield','swap'],legendary:['zap']},  
-  RARITY=Object.fromEntries(Object.entries(RTIER).flatMap(([r,l])=>l.map(k=>[k,r])));RARITY.teleport='legendary';   // teleport is not in a tier: only last place can roll it  
-function pickItem(rk){const k=pickItem0(rk);return k==='swap'&&rk<3?'rocket':k}   // swap needs a non-1st racer ahead, so 3rd place or worse  
-function pickItem0(rk){if(rk>=R.length&&Math.random()<.4)return'teleport';  
+  RARITY=Object.fromEntries(Object.entries(RTIER).flatMap(([r,l])=>l.map(k=>[k,r])));RARITY.teleport='legendary';   // teleport is not in a tier: only a driver a full lap or more behind the leader can roll it  
+function pickItem(rk,r){const down=!!r&&Math.max(...R.map(o=>o.prog))-r.prog>=N,   // a lap or more down
+    k=pickItem0(rk,down);return k==='swap'&&rk<3?'rocket':k}   // swap needs a non-1st racer ahead, so 3rd place or worse  
+function pickItem0(rk,down){if(down&&Math.random()<.4)return'teleport';  
   const w=rk===1?{common:70,rare:30}:rk<4?{common:50,rare:40,legendary:10}:{common:34,rare:41,legendary:25};  
   let t=0;for(const k in w)t+=w[k];let x=Math.random()*t,tier='common';for(const k in w){x-=w[k];if(x<0){tier=k;break}}  
   const l=RTIER[tier];return l[Math.random()*l.length|0]}  
@@ -736,7 +737,7 @@ function aiInput(r){
 function aiItem(a,dt){  
   if(a.finished)return;  
   if(!a.aiItem){a.aiT-=dt;if(a.aiT>0)return;  
-    for(let i=0;i<boxes.length;i++){const b=boxes[i];if(b.t>0)continue;if(hit(a,b.x,b.z,1.2+RC)){grabBox(i);a.aiItem=pickItem(rankOf(a));a.hold=0;break}}return}  
+    for(let i=0;i<boxes.length;i++){const b=boxes[i];if(b.t>0)continue;if(hit(a,b.x,b.z,1.2+RC)){grabBox(i);a.aiItem=pickItem(rankOf(a),a);a.hold=0;break}}return}  
   a.hold+=dt;const k=a.aiItem;let use=a.hold>14;  
   if(k==='boost')use=use||(cur[(a.idx+8)%N]<.12&&a.hold>.5);  
   else if(k==='rocket')use=use||R.some(o=>o!==a&&o.prog>a.prog&&o.prog-a.prog<45);  
@@ -804,7 +805,7 @@ function update(dt){
       step(me,dt,I);  
       if((pressed.Space||pressed.KeyX||T.itemP)&&me.item){useItem(me,me.item);me.item=null}  
       for(let i=0;i<boxes.length;i++){const b=boxes[i];if(b.t>0||me.item)continue;  
-        if(hit(me,b.x,b.z,1.2+RC)){grabBox(i);me.item=pickItem(rankOf(me));toast(me.item)}}  
+        if(hit(me,b.x,b.z,1.2+RC)){grabBox(i);me.item=pickItem(rankOf(me),me);toast(me.item)}}  
       if(me.finished){place=rankOf(me);finT=me.fin;showEnd()}  
     }  
     // slicks + collisions  

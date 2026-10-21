@@ -144,7 +144,7 @@ body.reg #item,body.reg #dbar,body.reg #bi{display:none!important}
     <div id="kb"><b>Steer</b><span><kbd>←</kbd><kbd>→</kbd> or <kbd>A</kbd><kbd>D</kbd></span><b>Throttle / brake</b><span><kbd>↑</kbd><kbd>↓</kbd> or <kbd>W</kbd><kbd>S</kbd></span><b>Drift</b><span><kbd>Shift</kbd> or <kbd>Z</kbd></span><b>Use item</b><span><kbd>Space</kbd> or <kbd>X</kbd></span><b>Look back</b><span>Hold <kbd>Ctrl</kbd></span></div>  
     <input id="nm" maxlength="10" placeholder="Driver name" autocomplete="off">  
     <div class="row"><button id="go" type="button">Solo race</button><button id="reg" type="button" title="Standard circuit, plain racing: no items, boost pads or drift boosts">Regular mode</button><button id="host" type="button" disabled aria-label="Host online (out of order)">Host online</button></div>
-    <div id="stw"><div class="row"><button id="set" type="button" aria-expanded="false" aria-controls="sp">Settings</button><button id="upd" type="button">What’s new<span id="nb" hidden></span></button></div><div id="sp" hidden><div class="sr"><span>Car colour</span><div id="sw"></div><input id="cc" type="color" value="#ff0500" aria-label="Pick any car colour"></div><div class="sr"><span>Units</span><div class="seg"><button id="uM" type="button">Metric</button><button id="uI" type="button">Imperial</button></div></div></div></div>  
+    <div id="stw"><div class="row"><button id="set" type="button" aria-expanded="false" aria-controls="sp">Settings</button><button id="upd" type="button">What’s new<span id="nb" hidden></span></button></div><div id="sp" hidden><div class="sr"><span>Car color</span><div id="sw"></div><input id="cc" type="color" value="#ff0500" aria-label="Pick any car color"></div><div class="sr"><span>Units</span><div class="seg"><button id="uM" type="button">Metric</button><button id="uI" type="button">Imperial</button></div></div></div></div>  
     <div class="row" id="jr"><input id="code" maxlength="4" placeholder="CODE" autocomplete="off"><button id="join" type="button" disabled aria-label="Join room (out of order)">Join room</button></div>  
     <div id="lob"></div><button id="leave" type="button" style="display:none">Leave room</button></div>  
 </div>  
@@ -303,7 +303,7 @@ ribbon(HW,HW+2.2,.07,i=>(i>>1)%2?0xe63946:0xffffff);
 // ---------- random terrain: hills/valleys generated from the track shape (same track = same land); the road corridor stays flat
 let TH=()=>0;
 {let sd=SD;   // every race gets its own random land and hills; the seed is shared online so everyone sees the same ones
- // the seed also picks the look: how hilly, how bumpy, and the colours
+ // the seed also picks the look: how hilly, how bumpy, and the colors
  const rnd=mkRnd(sd),
    AMP=.65+rnd()*.95,FREQ=230+rnd()*160,LEVEL=.3+rnd()*.14,SNOW=60+rnd()*70,PAL=[[.86,.96,.86],[1.02,.9,.66],[1.08,1.02,.74],[.8,.94,1.0]][rnd()*4|0];
  const hs=(ix,iz)=>{let h=Math.imul(ix,374761393)^Math.imul(iz,668265263)^sd;h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)/4294967295};
@@ -1059,7 +1059,7 @@ function showEnd(){
   $('menu').querySelector('h1').textContent=place===1?'Victory':'Finished '+ord(place);  
   $('mp').textContent='Race time '+fmt(finT)+'.';$('go').textContent=MP?'Race again':'Draw new track';$('menu').style.display='flex';endUI();  
 }  
-// ---------- settings: car colour + units, remembered on this device
+// ---------- settings: car color + units, remembered on this device
 const COLS=['#ff0500','#ff8a1f','#ffd23f','#2ec4b6','#4cc9f0','#3a6bff','#b388ff','#ff5fa2','#f2f2f2','#2b2f3a'],cfg={};
 try{Object.assign(cfg,JSON.parse(localStorage.getItem('clou-cfg')||'{}'))}catch(e){}
 const saveCfg=()=>{try{localStorage.setItem('clou-cfg',JSON.stringify(cfg))}catch(e){}};
@@ -1069,7 +1069,7 @@ function applyCfg(){
   if(cfg.col)for(const n in BODY){const m=me.mats[n];if(m)m.color.set(cfg.col).multiplyScalar(BODY[n])}   // paint the body panels, keep glass/tyres/trim
   $('cc').value=cur;
   const w=$('sw');w.innerHTML='';
-  COLS.forEach(h=>{const b=document.createElement('button');b.type='button';b.className='sw'+(cur===h?' on':'');b.style.setProperty('--c',h);b.setAttribute('aria-label','Car colour '+h);
+  COLS.forEach(h=>{const b=document.createElement('button');b.type='button';b.className='sw'+(cur===h?' on':'');b.style.setProperty('--c',h);b.setAttribute('aria-label','Car color '+h);
     b.addEventListener('click',()=>{cfg.col=h;saveCfg();applyCfg()});w.appendChild(b)});
   $('uM').classList.toggle('on',cfg.unit!=='imperial');$('uI').classList.toggle('on',cfg.unit==='imperial');
 }
@@ -1079,26 +1079,26 @@ $('uM').addEventListener('click',()=>{cfg.unit='metric';saveCfg();applyCfg()});
 $('uI').addEventListener('click',()=>{cfg.unit='imperial';saveCfg();applyCfg()});
 applyCfg();
 // ---------- update screen: what changed since the previous build (opens once per version, and from the menu)
-const UPD={ver:'2.0',date:'21 Oct 2026',sub:'Compared with the previous build (index_1), this version adds bridges, hills, a new driving model and settings.',groups:[
+const UPD={ver:'2.0',date:'21 Oct 2026',sub:"Here's what I changed since the last version. The big stuff is bridges, hills and how the car drives.",groups:[
  ['New','#5ad28c',[
-  '<b>Bridges.</b> Your drawn track can now cross itself, up to 6 times. Wherever it does, one road goes over the other on a bridge with pillars.',
-  '<b>Hills and land.</b> Every race gets its own hills, valleys and snow-capped scenery, and the road climbs and dips with them.',
-  '<b>Regular mode.</b> Plain racing with no items, boost pads or drift boosts.',
-  '<b>Settings.</b> Pick your car colour (swatches or any colour) and switch between metric and imperial units. Saved on this device.',
-  '<b>Pause.</b> Press P or Esc. Solo races also pause by themselves when you switch windows.',
-  '<b>Gear and RPM readout</b> on the speedometer.']],
+  '<b>Bridges.</b> Your track can cross over itself now (up to 6 times). When it does, one road goes up and over the other.',
+  '<b>Hills.</b> Every race has different hills, valleys and snowy mountains, and the road goes up and down with them.',
+  '<b>Regular mode.</b> Just racing. No items, no boost pads, no drift boosts.',
+  '<b>Settings.</b> You can change your car color and switch between km/h and mph. It remembers what you picked.',
+  '<b>Pause.</b> Hit P or Esc. In a solo race it also pauses by itself if you click away.',
+  '<b>Gear and RPM</b> show up next to your speed now.']],
  ['Improved','#4aa8ff',[
-  '<b>Driving model.</b> Automatic gearbox, tyre grip and slides, weight shifting under braking, downforce at speed and traction control. Top speed is higher (95 instead of 60).',
-  '<b>Barriers</b> follow the shape of each corner and give a proper bounce and scrape when you hit them.',
-  '<b>Track drawing.</b> The circuit follows your sketch more closely instead of cutting out loops. Very tight bends are still eased so a kart fits.',
-  '<b>Boost</b> now raises top speed by 15% (it was 35%), to suit the faster car.']],
+  "<b>Driving.</b> I redid how the car drives. It has gears now, the tires can slip, braking shifts the weight, and you get more grip the faster you go. It's faster too (top speed is 95, it was 60).",
+  '<b>Barriers</b> follow the corners now and you actually bounce off them.',
+  '<b>Drawing tracks.</b> The track follows what you draw a lot closer instead of cutting your loops out. Really tight turns still get rounded off so the car fits.',
+  "<b>Boost</b> gives +15% top speed (it was +35%) since the car is faster now."]],
  ['Fixed','#ffd23f',[
-  '<b>Floating and sinking.</b> Trees, rocks, bridge pillars, grandstands, boost pads and oil slicks now sit on the ground and follow the slope.',
-  '<b>Road edges.</b> The ground beside the road matches the road height, and barriers no longer hover at crests.',
-  '<b>Effects on hills.</b> Sparks, smoke, teleport and lightning appear at the right height instead of under the road.',
-  '<b>Flicker.</b> Distant road markings and curbs no longer shimmer.']],
+  '<b>Floating and sinking stuff.</b> Trees, rocks, bridge pillars, the stands, boost pads and oil slicks all sit on the ground now and tilt with the hills.',
+  "<b>Road edges.</b> The ground next to the road matches the road, and the barriers don't hover over hills anymore.",
+  '<b>Effects on hills.</b> Sparks, smoke, teleport and lightning show up where they should instead of under the road.',
+  "<b>Flickering.</b> The road lines and curbs far away don't shimmer anymore."]],
  ['Heads up','#ff7a66',[
-  '<b>Online hosting is switched off</b> for now (the button is marked out of order). The previous build had it on.']]]};
+  '<b>Online hosting is off for now.</b> The button says out of order. It was on in the last version.']]]};
 const upg=$('upg');let upgFrom=null;
 function buildUpd(){$('uv').textContent='Version '+UPD.ver+' · '+UPD.date;
   $('ub').innerHTML='<p class="sub">'+UPD.sub+'</p>'+UPD.groups.map(g=>'<h3 style="--g:'+g[1]+'">'+g[0]+'</h3><ul style="--g:'+g[1]+'">'+g[2].map(t=>'<li>'+t+'</li>').join('')+'</ul>').join('')}

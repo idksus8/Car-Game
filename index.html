@@ -46,6 +46,8 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block}
 @keyframes wb{50%{opacity:.35}}  
 #toast small{display:block;font:600 13px var(--f);letter-spacing:.3em;margin-bottom:4px}  
 #item{transition:border-color .2s,box-shadow .2s}  
+#msg small{display:block;font:600 clamp(14px,2.4vw,22px) var(--f);letter-spacing:.22em;margin-top:12px;opacity:.9}
+body.paused #gl{filter:brightness(.55) saturate(.8)}
 #msg{left:0;right:0;top:22%;text-align:center;font:italic 700 clamp(80px,18vw,180px)/1 var(--f);color:#fff;text-shadow:0 4px 40px rgba(0,0,0,.45)}  
 #menu{inset:0;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:12px;padding:24px clamp(20px,7vw,120px);box-sizing:border-box;overflow:auto;background:linear-gradient(90deg,rgba(8,10,14,.94) 0,rgba(8,10,14,.82) 40%,rgba(8,10,14,.25) 75%,rgba(8,10,14,.08));pointer-events:auto!important}  
 @media (max-width:700px){#menu{background:rgba(8,10,14,.92);justify-content:flex-start;padding-top:max(28px,env(safe-area-inset-top))}}  
@@ -1109,9 +1111,10 @@ upg.addEventListener('click',e=>{if(e.target===upg)closeUpd()});
 addEventListener('keydown',e=>{if(!upg.hidden&&e.code==='Escape'){e.preventDefault();closeUpd()}});
 if(cfg.seen!==UPD.ver){$('nb').hidden=false;setTimeout(openUpd,500)}
 let paused=false;
-const togglePause=f=>{if(MP||!(state==='race'||state==='count'))return;paused=f===undefined?!paused:f;$('msg').textContent=paused?'PAUSED':''};
+const togglePause=f=>{if(MP||!(state==='race'||state==='count'))return;paused=f===undefined?!paused:f;$('msg').innerHTML=paused?'PAUSED<small>CLICK OR TAP TO RESUME</small>':'';document.body.classList.toggle('paused',paused)};
 addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.code==='KeyP'||e.code==='Escape')togglePause()});
 addEventListener('blur',()=>togglePause(true));
+addEventListener('pointerdown',()=>{if(paused)togglePause(false)});   // click or tap anywhere to un-pause
 let last=performance.now();  
 function loop(t){const dt=Math.min(.05,(t-last)/1000);last=t;if(!paused)update(dt);hud();renderer.render(scene,cam);requestAnimationFrame(loop)}  
 buildTrack(CP,newSeed());reset();cam.position.set(me.x-Math.sin(me.h)*14,6.8,me.z-Math.cos(me.h)*14);  

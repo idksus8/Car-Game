@@ -67,12 +67,6 @@ kbd{font:600 11px var(--b);padding:2px 6px;border:1px solid var(--line);border-b
 #menu button#go{background:var(--acc);border-color:var(--acc);color:#fff}  
 #menu button#go:hover{filter:brightness(1.1)}
 body.reg #item,body.reg #dbar,body.reg #bi{display:none!important}
-#menu button#host,#menu button#join{position:relative;overflow:visible;cursor:not-allowed;color:rgba(255,255,255,.3);border-color:rgba(255,255,255,.12)}
-#menu button#host:hover,#menu button#join:hover{border-color:rgba(255,255,255,.12)}
-#menu button#host::before,#menu button#host::after,#menu button#join::before,#menu button#join::after{content:'OUT OF ORDER';position:absolute;left:-10px;right:-10px;top:50%;padding:7px 0;text-align:center;white-space:nowrap;font:700 12px/1.2 var(--f);letter-spacing:.2em;color:#111;
- background:linear-gradient(#ffd400,#ffd400) center/100% calc(100% - 10px) no-repeat,repeating-linear-gradient(-45deg,#111 0 7px,#ffd400 7px 14px);box-shadow:0 2px 6px rgba(0,0,0,.5);pointer-events:none}
-#menu button#host::after,#menu button#join::after{transform:translateY(-50%) rotate(-7deg)}
-#menu button#host::before,#menu button#join::before{transform:translateY(-50%) rotate(6deg);filter:brightness(.92)}  
 #lob{width:100%;max-width:400px}  
 #lob .code{display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line)}  
 #lob .code span{font:600 12px var(--f);letter-spacing:.16em;color:var(--mute);text-transform:uppercase}  
@@ -131,6 +125,21 @@ body.reg #item,body.reg #dbar,body.reg #bi{display:none!important}
 #upg button{font:600 16px var(--f);letter-spacing:.1em;text-transform:uppercase;padding:9px 20px;border-radius:4px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
 #upg #uc2{background:var(--acc);border-color:var(--acc)}
 #upg #uc{padding:2px 11px 5px;font-size:24px;line-height:1}
+#tyre{left:max(14px,env(safe-area-inset-left));top:calc(max(12px,env(safe-area-inset-top)) + 112px);padding:8px 12px 8px 8px;display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:6px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+#tyre:empty,body:not(.run) #tyre{display:none}
+#tyre .ring{position:relative;width:46px;height:46px;border-radius:50%;background:conic-gradient(var(--tc) calc(var(--tp)*1%),rgba(255,255,255,.14) 0);flex:none}
+#tyre .ring::before{content:'';position:absolute;inset:6px;border-radius:50%;background:#10141b}
+#tyre .ring b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 14px var(--f);font-variant-numeric:tabular-nums}
+#tyre .tx{display:flex;flex-direction:column;gap:2px}
+#tyre .tx span{font:600 11px var(--f);letter-spacing:.16em;color:var(--mute)}
+#tyre .tx em{font:italic 700 15px var(--f);font-style:normal;letter-spacing:.06em;color:var(--tc);text-transform:uppercase}
+#tyre.low{border-color:#ff4d2e;animation:wb .5s steps(2,jump-none) infinite}
+#tyre.pit{border-color:#ffd23f}
+#dlaps{display:flex}
+#dlaps button{border-radius:0!important;padding:11px 16px!important}
+#dlaps button:first-child{border-radius:4px 0 0 4px!important}
+#dlaps button:last-child{border-radius:0 4px 4px 0!important;border-left:none!important}
+#dlaps #lN{min-width:84px;cursor:default;pointer-events:none;border-left:none!important}
 #nb{display:inline-block;width:8px;height:8px;margin-left:9px;border-radius:50%;background:var(--acc);vertical-align:middle}
 #nb[hidden]{display:none}
 </style>  
@@ -140,26 +149,26 @@ body.reg #item,body.reg #dbar,body.reg #bi{display:none!important}
 <div id="vig"></div><div id="fx"></div><div id="zapf"></div>  
 <div id="hud">  
   <div id="place"></div><div id="lap"></div><canvas id="mm" width="110" height="110"></canvas>  
-  <div id="spd"></div><div id="item"></div><div id="dbar"><i></i></div><div id="warn"><div class="rim"></div><div class="tx">ROCKET INCOMING<small></small></div><div class="ar"><svg viewBox="0 0 24 24"><path d="M12 2l9 19-9-5-9 5z"/></svg></div></div><div id="toast" aria-live="polite"></div><div id="msg" aria-live="polite"></div>  
-  <div id="menu"><div class="eyebrow">Circuit Grand Prix · 3 laps</div><h1>Car Game <small class="by">by Lou</small></h1>  
+  <div id="tyre"></div><div id="spd"></div><div id="item"></div><div id="dbar"><i></i></div><div id="warn"><div class="rim"></div><div class="tx">ROCKET INCOMING<small></small></div><div class="ar"><svg viewBox="0 0 24 24"><path d="M12 2l9 19-9-5-9 5z"/></svg></div></div><div id="toast" aria-live="polite"></div><div id="msg" aria-live="polite"></div>  
+  <div id="menu"><div class="eyebrow" id="eb">Circuit Grand Prix · 3 laps</div><h1>Car Game <small class="by">by Lou</small></h1>  
     <p id="mp">Draw your own circuit before every solo race, or race up to five friends online.</p>  
-    <div id="kb"><b>Steer</b><span><kbd>←</kbd><kbd>→</kbd> or <kbd>A</kbd><kbd>D</kbd></span><b>Throttle / brake</b><span><kbd>↑</kbd><kbd>↓</kbd> or <kbd>W</kbd><kbd>S</kbd></span><b>Drift</b><span><kbd>Shift</kbd> or <kbd>Z</kbd></span><b>Use item</b><span><kbd>Space</kbd> or <kbd>X</kbd></span><b>Look back</b><span>Hold <kbd>Ctrl</kbd></span></div>  
+    <div id="kb"><b>Steer</b><span><kbd>←</kbd><kbd>→</kbd> or <kbd>A</kbd><kbd>D</kbd></span><b>Throttle / brake</b><span><kbd>↑</kbd><kbd>↓</kbd> or <kbd>W</kbd><kbd>S</kbd></span><b>Drift</b><span><kbd>Shift</kbd> or <kbd>Z</kbd></span><b>Pit stop</b><span><kbd>E</kbd> (pit lane, fresh tyres)</span><b>Use item</b><span><kbd>Space</kbd> or <kbd>X</kbd></span><b>Look back</b><span>Hold <kbd>Ctrl</kbd></span></div>  
     <input id="nm" maxlength="10" placeholder="Driver name" autocomplete="off">  
-    <div class="row"><button id="go" type="button">Solo race</button><button id="reg" type="button" title="Standard circuit, plain racing: no items, boost pads or drift boosts">Regular mode</button><button id="host" type="button" disabled aria-label="Host online (out of order)">Host online</button></div>
+    <div class="row"><button id="go" type="button">Solo race</button><button id="reg" type="button" title="Standard circuit, plain racing: no items, boost pads or drift boosts">Regular mode</button><button id="host" type="button">Host online</button></div>
     <div id="stw"><div class="row"><button id="set" type="button" aria-expanded="false" aria-controls="sp">Settings</button><button id="upd" type="button">What’s new<span id="nb" hidden></span></button></div><div id="sp" hidden><div class="sr"><span>Car color</span><div id="sw"></div><input id="cc" type="color" value="#ff0500" aria-label="Pick any car color"></div><div class="sr"><span>Units</span><div class="seg"><button id="uM" type="button">Metric</button><button id="uI" type="button">Imperial</button></div></div></div></div>  
-    <div class="row" id="jr"><input id="code" maxlength="4" placeholder="CODE" autocomplete="off"><button id="join" type="button" disabled aria-label="Join room (out of order)">Join room</button></div>  
+    <div class="row" id="jr"><input id="code" maxlength="4" placeholder="CODE" autocomplete="off"><button id="join" type="button">Join room</button></div>  
     <div id="lob"></div><button id="leave" type="button" style="display:none">Leave room</button></div>  
 </div>  
 <div id="draw"><header><div><div class="eyebrow" id="dr">Round 1</div><h2>Draw your circuit</h2></div><div id="dmsg"></div></header>  
 <canvas id="dc"></canvas>  
-<div class="row"><button id="dclear" type="button">Clear</button><button id="drand" type="button">Random track</button><button id="dback" type="button">Back</button><button id="dgo" type="button" disabled>Race this track</button></div></div>  
+<div class="row"><button id="dclear" type="button">Clear</button><button id="drand" type="button">Random track</button><button id="dback" type="button">Back</button><div class="seg" id="dlaps" title="Laps"><button id="lM" type="button" aria-label="Fewer laps">−</button><button id="lN" type="button" tabindex="-1">3 laps</button><button id="lP" type="button" aria-label="More laps">+</button></div><button id="dgo" type="button" disabled>Race this track</button></div></div>  
 <div id="upg" role="dialog" aria-modal="true" aria-labelledby="ut" hidden><div class="card"><header><div><div class="vt" id="uv"></div><h2 id="ut">What’s new</h2></div><button id="uc" type="button" aria-label="Close">×</button></header><div class="body" id="ub"></div><footer><button id="uc2" type="button">Got it</button></footer></div></div>
-<div id="touch"><div><button id="bl" type="button" aria-label="Steer left">◀</button><button id="br" type="button" aria-label="Steer right">▶</button></div><div><button id="bd" type="button" class="w">DRIFT</button><button id="bi" type="button" class="w">ITEM</button></div></div>  
+<div id="touch"><div><button id="bl" type="button" aria-label="Steer left">◀</button><button id="br" type="button" aria-label="Steer right">▶</button></div><div><button id="bd" type="button" class="w">DRIFT</button><button id="bp" type="button">PIT</button><button id="bi" type="button" class="w">ITEM</button></div></div>  
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>  
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>  
 <script>  
 const $=id=>document.getElementById(id),clamp=(v,a,b)=>Math.max(a,Math.min(b,v));  
-const HW=14,N=600,MAXV=95,LAPS=3;
+const HW=14,N=600,MAXV=95;let LAPS=3;
 const newSeed=()=>Math.random()*4294967296>>>0;
 let REG=false;   // regular mode: plain racing, no item boxes, items, boost pads, drift boosts or catch-up AI  
 // ---------- renderer / scene  
@@ -292,7 +301,17 @@ function wall(o,hgt,fn,y0,ex){y0=y0||0;
 ribbon(-HW,HW,.05,i=>i===0?0xffffff:i===1?0x222222:(i>>2)%2?0x6a6f82:0x60657a,asphaltTex);  
 ribbon(-.3,.3,.07,i=>i>1&&(i>>2)%2?0xf5f5f5:null);  
 ribbon(-HW+.5,-HW+1.1,.07,i=>i>1?0xffffff:null);ribbon(HW-1.1,HW-.5,.07,i=>i>1?0xffffff:null);  
-ribbon(-HW-2.2,-HW,.07,i=>(i>>1)%2?0xe63946:0xffffff);  
+ribbon(-HW-2.2,-HW,.07,i=>(i>>1)%2?0xe63946:0xffffff);
+{const PI=i=>i<=62||i>=N-62,PW=i=>i<=36||i>=N-38;   // F1-style pit lane: its own road on the left of the main straight, with a wall and garages
+ ribbon(-HW-9.6,-HW-3,.06,i=>PI(i)?((i>>2)%2?0x4d5266:0x484d60):null,asphaltTex);
+ ribbon(-HW-3.6,-HW-3,.08,i=>PI(i)?0xffffff:null);ribbon(-HW-9.6,-HW-9,.08,i=>PI(i)?0xffd23f:null);   // white fast-lane line, yellow work-lane line
+ ribbon(-HW-8.8,-HW-4.2,.08,i=>PI(i)&&i%4===0?0xffd23f:null);   // pit box lines, one per garage
+ wall(-HW-2.7,.9,i=>PW(i)?0xd9dce3:null);
+ const gm=[0xe63946,0x3a6bff,0xffd23f,0x2ec4b6,0xb388ff,0xff8a1f].map(c=>new THREE.MeshLambertMaterial({color:c})),bm=new THREE.MeshLambertMaterial({color:0x3b4150}),rm=new THREE.MeshLambertMaterial({color:0x2a2f3a});
+ for(let q=-36,n=0;q<=36;q+=4,n++){const k=((q%N)+N)%N,g=new THREE.Group();
+  const bd=new THREE.Mesh(new THREE.BoxGeometry(8,4.2,9),bm),dr=new THREE.Mesh(new THREE.BoxGeometry(.3,3,7.6),gm[n%6]),rf=new THREE.Mesh(new THREE.BoxGeometry(9,.4,9.6),rm);
+  dr.position.set(-4.05,-.4,0);rf.position.set(0,2.3,0);bd.castShadow=rf.castShadow=true;g.add(bd,dr,rf);
+  g.position.set(pts[k].x-rgt[k].x*(HW+17.5),YH[k]+2.1,pts[k].z-rgt[k].z*(HW+17.5));g.rotation.y=Math.atan2(tan[k].x,tan[k].z);scene.add(g)}}  
 ribbon(HW,HW+2.2,.07,i=>(i>>1)%2?0xe63946:0xffffff);  
 // barriers where the invisible wall used to be  
 [-1,1].forEach(s=>{const W=k=>s*WOF[(s+1)/2][k];wall(W,1.5,i=>(i>>2)%2?0xe63946:0xf5f5f5,0,k=>YC[k]>.15?0:1.8);ribbon(k=>W(k)-.5*s,k=>W(k)+.5*s,1.5,()=>0x3a4052)});
@@ -361,7 +380,7 @@ const clearSide=(i,sd)=>{for(const l of [30,43,56])for(const a of [-28,0,28]){co
  if(pl.length){const bg=new THREE.BoxGeometry(1,1,1);bg.translate(0,.5,0);const im=new THREE.InstancedMesh(bg,new THREE.MeshLambertMaterial({color:0x8d92a3}),pl.length),o3=new THREE.Object3D();
   pl.forEach((p,i)=>{o3.position.set(p[0],p[3],p[1]);o3.scale.set(1.9,p[2],1.9);o3.updateMatrix();im.setMatrixAt(i,o3.matrix)});im.castShadow=im.receiveShadow=true;im.frustumCulled=false;scene.add(im)}}
 STANDS.length=0;crowds.length=0;  
-if(clearSide(0,1))STANDS.push([0,1,64,8]);if(clearSide(0,-1))STANDS.push([0,-1,40,5]);  
+if(clearSide(0,1))STANDS.push([0,1,64,8]);  
 {const picks=[0];for(let i=30;i<N-30&&picks.length<3;i+=10){let m=0;for(let k=-50;k<=50;k+=5)m=Math.max(m,YC[(i+k+N)%N]>.05?9:0);for(let k=-20;k<=20;k+=4)m=Math.max(m,cur[(i+k+N)%N]);  
   if(m<.13&&picks.every(q=>{const e=Math.abs(q-i);return Math.min(e,N-e)>130})){const sd=clearSide(i,1)?1:clearSide(i,-1)?-1:0;if(sd){picks.push(i);STANDS.push([i,sd,56,7])}}}}  
 const nearStand=(x,z)=>STANDS.some(s=>Math.hypot(x-pts[s[0]].x,z-pts[s[0]].z)<90);  
@@ -600,6 +619,7 @@ addEventListener('keyup',e=>keys[e.code]=false);
 addEventListener('blur',()=>{keys.ControlLeft=keys.ControlRight=false});  
 const hold=(id,k)=>{const b=$(id);b.addEventListener('pointerdown',e=>{e.preventDefault();T.auto=true;T[k]=1});['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>T[k]=0))};  
 hold('bl','l');hold('br','r');hold('bd','drift');  
+$('bp').addEventListener('pointerdown',e=>{e.preventDefault();togglePit()});
 $('bi').addEventListener('pointerdown',e=>{e.preventDefault();T.itemP=true});  
 $('go').addEventListener('click',()=>start(REG&&state==='race'&&me.finished));
 // regular mode: race the standard circuit straight away, no drawing
@@ -630,7 +650,7 @@ const slopeOf=r=>{const i=r.remote&&r.yi!=null?r.yi:r.idx;return(YH[(i+2)%N]-YH[
 const latOf=r=>(r.x-pts[r.idx].x)*rgt[r.idx].x+(r.z-pts[r.idx].z)*rgt[r.idx].z;  
 function reset(){  
   R.forEach((r,k)=>{const row=k>>1,i=N-12-row*11,lat=k%2?5:-5;  
-    Object.assign(r,{idx:i,lap:-1,x:pts[i].x+rgt[i].x*lat,z:pts[i].z+rgt[i].z*lat,h:Math.atan2(tan[i].x,tan[i].z),v:0,spin:0,boost:0,drift:0,charge:0,item:null,prog:-N+i,finished:false,cap:1,shield:0,zap:0,zs:1,zw:false,sl:0,yr:0,gr:1,gc:0,ax:0,sld:0,rpm:0,pitch:0,pv:0,aiT:Math.random()*2,dr:false,aiItem:null,hold:0});  
+    Object.assign(r,{idx:i,lap:-1,x:pts[i].x+rgt[i].x*lat,z:pts[i].z+rgt[i].z*lat,h:Math.atan2(tan[i].x,tan[i].z),v:0,spin:0,boost:0,drift:0,charge:0,item:null,prog:-N+i,finished:false,cap:1,shield:0,zap:0,zs:1,zw:false,sl:0,yr:0,gr:1,gc:0,ax:0,sld:0,rpm:0,tw:0,pitT:0,pm:0,pitReq:false,pitAt:.3+Math.random()*.2,pitch:0,pv:0,aiT:Math.random()*2,dr:false,aiItem:null,hold:0});  
     r.m.rotation.set(0,0,0);r.fl.visible=false;r.tx=r.x;r.tz=r.z;r.th=r.h;r.tv=0});  
   rockets.splice(0).forEach(q=>scene.remove(q.m));  
   boxes.forEach(b=>{b.t=0;b.m.visible=true});slicks.splice(0).forEach(s=>scene.remove(s.m));  
@@ -644,8 +664,8 @@ function start(keepReg){if(state==='ready'||(state==='race'&&me.finished)){
 // ICE servers: STUN finds direct routes, TURN relays traffic when a direct connection is impossible.  
 // Replace the TURN entries with your own credentials (Metered, Cloudflare Calls, Twilio, or a self-hosted coturn).  
 const ICE={iceServers:[  
-  {urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},  
-  {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}  
+  {urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun2.l.google.com:19302'},{urls:'stun:global.stun.twilio.com:3478'},  
+  {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp','turns:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}  
 ],iceCandidatePoolSize:4};  
 let MP=false,isHost=false,peer=null,hostConn=null,nextG=1,sendT=0,room='',myName='';  
 const DRAWMS=60000;let pendRo=[],drawerId='',lastDrawer='',mpRound=0,drawTimer=0,drawCd=0,drawEnd=0,drawTitle='';  
@@ -678,7 +698,8 @@ function hostGame(){
   setMsg('Creating room…');peer=new Peer('tk3d-'+room,{config:ICE});  
   netSend=m=>{for(const id in guests){const c=guests[id].c;if(c.open)c.send(m)}};  
   peer.on('open',()=>{ui('host');setMsg('Share this code with friends. Up to 6 drivers, bots fill the empty spots.');sendLobby()});  
-  peer.on('error',e=>{setMsg('Connection problem ('+e.type+'). Reload and try again.')});  
+  peer.on('error',e=>{if(e.type==='unavailable-id'&&!peer.open){try{peer.destroy()}catch(x){}hostGame();return}setMsg('Connection problem ('+e.type+'). Reload and try again.')});
+  peer.on('disconnected',()=>{try{peer.reconnect()}catch(e){}});  
   peer.on('connection',c=>{  
     c.on('data',m=>{  
       if(m.t==='hello'){if(Object.keys(guests).length>=5){c.send({t:'full'});setTimeout(()=>c.close(),300);return}  
@@ -693,7 +714,7 @@ function joinGame(code){
   netSend=m=>{if(hostConn&&hostConn.open)hostConn.send(m)};  
   peer.on('open',()=>{hostConn=peer.connect('tk3d-'+code,{reliable:true});  
     hostConn.on('open',()=>{hostConn.send({t:'hello',name:myName});ui('guest');setMsg('Connected! Waiting for the host to start the race…')});  
-    hostConn.on('data',handle);  
+    hostConn.on('data',handle);setTimeout(()=>{if(hostConn&&!hostConn.open)setMsg('Still connecting… if this stays stuck, both devices may be on networks that block direct play. Try the same Wi-Fi or reload.')},9000);  
     hostConn.on('close',()=>{setMsg('The host left the room.');setTimeout(()=>location.reload(),1800)})});  
   peer.on('error',e=>{MP=false;setMsg(e.type==='peer-unavailable'?'Room not found. Check the code and make sure the host is still online.':'Connection problem ('+e.type+'). Try reloading both devices.')})  
 }  
@@ -870,6 +891,7 @@ $('drand').addEventListener('click',()=>{fitted={P:randomTrack()};setD('Random t
 $('dback').addEventListener('click',()=>{$('draw').style.display='none';$('menu').style.display='flex';state='ready'});  
 $('dgo').addEventListener('click',submitTrack);  
 addEventListener('resize',()=>{if(state==='draw'){sizeDraw();paintDraw()}});  
+const AI_RISK=1.0;   // 0 = careful, 1 = aggressive, 1.5+ = reckless: later braking, higher corner speeds, closer racing, riskier overtakes
 function aiInput(r){  
   const i=r.idx,v=r.v,sp=v/MAXV,ti=(i+10+(v*.1|0)+(r.sk>.8?2:0))%N;  
   let lane=(LINE[ti]*.9+r.lane*.35)*HW*.7;  
@@ -877,18 +899,18 @@ function aiInput(r){
     if(nb)lane=lane*.25+nb.l*.75}  
   const sn=Math.sin(r.h),cs=Math.cos(r.h);let av=0,blk=0;  
   for(const o of R){if(o===r)continue;const dx=o.x-r.x,dz=o.z-r.z,f=dx*sn+dz*cs,sd=-dx*cs+dz*sn;  
-    const LA=24+v*.5;if(f>0&&f<LA&&Math.abs(sd)<4.2){const w=(1-f/LA)*(1+Math.max(0,(v-o.v)/20));av+=(sd>=0?-1:1)*w*5.5;if(f<14+v*.2)blk=Math.max(blk,1-f/(14+v*.2))}}  
+    const LA=24+v*.5;if(f>0&&f<LA&&Math.abs(sd)<4.2){const w=(1-f/LA)*(1+Math.max(0,(v-o.v)/20));av+=(sd>=0?-1:1)*w*5.5*(1-.35*AI_RISK);if(f<14+v*.2)blk=Math.max(blk,1-f/(14+v*.2))}}  
   lane=clamp(lane+clamp(av,-8,8),-(HW-4),HW-4);  
   const tx=pts[ti].x+rgt[ti].x*lane,tz=pts[ti].z+rgt[ti].z*lane;  
   let d=Math.atan2(tx-r.x,tz-r.z)-r.h;d=Math.atan2(Math.sin(d),Math.cos(d));  
   let steer=clamp(-d*1.8-clamp((latOf(r)-lane)*.03,-.6,.6)-(r.yr||0)*.6,-1,1),gas=true,brake=false;   // cross-track correction stops long look-aheads cutting corners  
-  for(let k=0;k<=66;k+=3){const j=(i+k)%N,allow=Math.sqrt(VT[j]*VT[j]+56*k*SEGL)*(r.sk>.8?1.0:.94);if(v>allow){gas=false;brake=v>allow+5;break}}  
+  for(let k=0;k<=66;k+=3){const j=(i+k)%N,allow=Math.sqrt(VT[j]*VT[j]+(56+16*AI_RISK)*k*SEGL)*(.92+.13*AI_RISK*(.6+.4*r.sk));if(v>allow){gas=false;brake=v>allow+5-3*AI_RISK;break}}  
   const sg=Math.sign(SG[(i+7)%N]);  
   if(!r.dr){if(false&&r.sk>.6&&cur[(i+7)%N]>.3&&sp>.55&&r.spin<=0&&blk<.3&&gas)r.dr=true}  
   else if(r.charge>1.9||(cur[(i+4)%N]<.14&&r.charge>.9)||sp<.45||r.spin>0)r.dr=false;  
   if(r.dr&&!r.drift)steer=sg*Math.max(.5,Math.abs(steer));  
-  {const lt=latOf(r),edge=Math.abs(lt)-(HW-5.5);   // drifting toward the edge: steer back, ease off, brake if fast
-    if(edge>0){steer=clamp(steer-Math.sign(lt)*Math.min(1,edge*.22),-1,1);if(edge>.8&&v>28)gas=false;if(edge>2.5&&v>40)brake=true;if(r.dr&&edge>1.5)r.dr=false}}
+  {const lt=latOf(r),edge=Math.abs(lt)-(HW-5.5+1.5*AI_RISK);   // drifting toward the edge: steer back, ease off, brake if fast
+    if(edge>0){steer=clamp(steer-Math.sign(lt)*Math.min(1,edge*.22),-1,1);if(edge>.8+AI_RISK&&v>28)gas=false;if(edge>2.5+AI_RISK&&v>40)brake=true;if(r.dr&&edge>1.5)r.dr=false}}
   return{gas,brake,drift:r.dr,steer};  
 }  
 function aiItem(a,dt){  
@@ -913,7 +935,27 @@ const GT=[.24,.34,.44,.54,.66,.78,.89,1],GA=[30,27,23,19.5,16.5,14,12.5,11.5];  
 const CA=2.1,CB=2.3,CK=5.2,GTOT=30;                             // CG→front axle, CG→rear axle, yaw inertia, total grip (m/s²)
 const tq=x=>{x=clamp(x,0,1.1);return(.55+1.1*x-.75*x*x)/.95};   // engine torque curve vs rpm
 const tyreF=a=>Math.sin(1.5*Math.atan(11*a));                    // tyre curve: peaks at ~9° slip, falls to ~70% when sliding
+const PLC=-(HW+6.2),PV=22;   // pit lane centre, pit limiter (m/s, about 80 km/h)
+const inPitL=r=>{const l=latOf(r);return l<-(HW+2.8)&&l>-(HW+10)&&(r.idx<=64||r.idx>=N-64)};
+// pit stop: the car is driven automatically in at the limiter, stops in its own garage box, gets fresh tyres, and rejoins at the end of the lane
+function pitDrive(r,dt){
+  const ox=r.x,oz=r.z;
+  if(r.pm===2){r.pitT-=dt;r.v=0;if(r.pitT<=0){r.pitT=0;r.tw=0;r.pm=3;if(r===me)pitNote('FRESH TYRES')}}
+  else{
+    const want=r.pm===1?Math.min(PV,Math.max(2.5,(r.pbs-r.ps)*SEGL*1.6)):PV;
+    r.v+=clamp(want-r.v,-40*dt,22*dt);
+    if(r.pm===1&&r.ps>=r.pbs-.15){r.pm=2;r.pitT=2.4;r.v=0;r.ps=r.pbs;if(r===me)pitNote('PIT STOP')}
+    else{const pr=r.ps;r.ps+=r.v*dt/SEGL;if(pr<0&&r.ps>=0)r.lap++;if(r.pm===3&&r.ps>=60){r.pm=0}}
+  }
+  const tg=r.pm===3&&r.ps>38?0:PLC;r.pl+=(tg-r.pl)*Math.min(1,dt*3);
+  const i0=Math.floor(r.ps),f=r.ps-i0,a=((i0%N)+N)%N,b=(a+1)%N;
+  r.x=pts[a].x*(1-f)+pts[b].x*f+(rgt[a].x*(1-f)+rgt[b].x*f)*r.pl;r.z=pts[a].z*(1-f)+pts[b].z*f+(rgt[a].z*(1-f)+rgt[b].z*f)*r.pl;
+  r.idx=a;r.prog=r.lap*N+a;
+  const dx=r.x-ox,dz=r.z-oz;r.h=r.v>3&&dx*dx+dz*dz>1e-6?Math.atan2(dx,dz):Math.atan2(tan[a].x,tan[a].z);
+  r.sl=r.yr=r.sa=r.sld=r.ax=0;r.drift=0;r.charge=0;r.boost=0;r.gr=1;r.rpm=Math.min(1,r.v/(GT[0]*MAXV));r.roll*=.9;
+}
 function step(r,dt,I){
+  if(r.pm){pitDrive(r,dt);return}
   const sp=r.v/MAXV;let s=I.steer;
   if(r.spin>0){r.spin-=dt;s=0;r.v*=Math.pow(.2,dt)}
   if(I.drift&&r.spin<=0&&sp>.5&&(r.drift||Math.abs(s)>.3)){if(!r.drift)r.drift=Math.sign(s);if(!REG)r.charge+=dt}
@@ -922,8 +964,9 @@ function step(r,dt,I){
   // keyboard steering filter: hands move slower at speed, return to centre quicker
   r.sa+=(eff-r.sa)*Math.min(1,dt*(Math.abs(eff)<Math.abs(r.sa)?18:14)*(1-.2*sp));
   let maxV=MAXV*r.cap*(r.boost>0?1.15:1)*(r.zap>0?.6:1);
-  const off=Math.abs(latOf(r))>HW+.5;
+  const inPL=inPitL(r),off=Math.abs(latOf(r))>HW+.5&&!inPL;
   if(off&&r.boost<=0)maxV*=.45;
+  if(inPL)maxV=Math.min(maxV,PV);   // pit limiter
   // ----- gearbox -----
   let g=r.gr||1;r.gc=Math.max(0,(r.gc||0)-dt);
   const vf=Math.max(0,r.v);
@@ -934,7 +977,7 @@ function step(r,dt,I){
   const gas=I.gas||r.boost>0,drag=1+.0004*r.v*r.v+(gas?0:2+2*rpm);  // rolling + aero drag, engine braking when off throttle
   let Fw=0;if(gas&&r.gc<=0&&r.spin<=0)Fw=GA[g-1]*tq(rpm)*clamp(1-Math.pow(r.v/maxV,10),0,1);
   const surf=off?.6:1,drf=r.drift?.8:1,spn=r.spin>0?.4:1;
-  const gtot=GTOT*(1+1.9*r.v*r.v/6889)*surf*spn;                            // downforce adds grip with speed
+  const tw=r.tw||0,gtot=GTOT*(1+1.9*r.v*r.v/6889)*surf*spn*(1-.3*tw);   // worn tyres lose grip                            // downforce adds grip with speed
   const slipB=Math.abs(r.sl||0)/Math.max(8,r.v);                    // ABS-ish: sliding tyres brake less
   let Fb=I.brake&&r.v>.3?Math.min(54,.97*gtot)*(1-clamp(slipB*1.6,0,.3))*(1-.5*Math.min(1,Math.abs(r.sa))*Math.min(1,r.v/25)):0;   // braking eases while steering hard (friction circle)   // brake force follows available grip (downforce), capped ~5.5g
   r.ax=(r.ax||0)+((Fw-Fb-drag)-(r.ax||0))*Math.min(1,dt*9);         // filtered accel → drives weight transfer
@@ -961,10 +1004,12 @@ function step(r,dt,I){
     r.h-=yr*h;r.x+=(Math.sin(r.h)*v-Math.cos(r.h)*sl)*h;r.z+=(Math.cos(r.h)*v+Math.sin(r.h)*sl)*h;
   }
   r.v=v;r.sl=clamp(sl,-40,40);r.yr=clamp(yr,-3.2,3.2);r.sld=sld;
+  if(r.spin<=0&&!r.finished&&r.v>2)r.tw=Math.min(1,tw+dt*(r.isMe?1:1.8)*(.0011+.0032*Math.min(1.6,sld)+(Fb>0?.0018*r.v/MAXV:0)+(off?.002:0)));   // tyre wear: sliding, hard braking and going off track
   if(r.v>maxV)r.v=Math.max(maxV,r.v-80*dt);
   r.v=Math.max(0,r.v);r.boost=Math.max(0,r.boost-dt);
   const ni=nearest(r),d=ni-r.idx;if(d<-N/2)r.lap++;else if(d>N/2)r.lap--;
   r.idx=ni;r.prog=r.lap*N+ni;
+  if(r.lap>=0&&r.lap<LAPS-1&&ni>=N-64&&ni<N-48&&(r.pitReq||(!r.isMe&&(r.tw||0)>(r.pitAt||.4)))){r.pm=1;r.pitReq=false;r.ps=ni-N;r.pl=latOf(r);r.pitT=0;r.pbs=-8+4*(Math.max(0,R.indexOf(r))%8);if(r===me)pitNote('ENTERING PITS')}   // pit entry
   const lat=latOf(r),lim=WOF[lat<0?0:1][ni]-2;
   if(Math.abs(lat)>lim){const sg=Math.sign(lat),ex=lat-sg*lim;r.x-=rgt[ni].x*ex;r.z-=rgt[ni].z*ex;
     let[vx,vz]=velOf(r);const ox=rgt[ni].x*sg,oz=rgt[ni].z*sg,vn=vx*ox+vz*oz;   // vn = speed into the barrier
@@ -977,6 +1022,9 @@ function step(r,dt,I){
   r.roll+=((-clamp(r.v*r.yr/55,-1.2,1.2)*.09)-r.roll)*Math.min(1,dt*8);
   if(!r.finished&&r.prog>=LAPS*N){r.finished=true;r.fin=raceT}
 }
+let pitNoteT=0;function pitNote(t){const e=$('toast');e.style.color='#fff';e.innerHTML='<small>TYRES</small>'+t;e.classList.add('on');clearTimeout(pitNoteT);pitNoteT=setTimeout(()=>e.classList.remove('on'),1800)}
+function togglePit(){if(state!=='race'||me.finished||me.pm)return;me.pitReq=!me.pitReq;pitNote(me.pitReq?'PIT NEXT LAP':'PIT CANCELLED')}
+addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.repeat)return;if(e.code==='KeyE')togglePit()});
 const rankOf=r=>1+R.filter(o=>o.prog>r.prog).length;  
 function update(dt){  
   time+=dt;  
@@ -1042,6 +1090,9 @@ function hud(){
   if(state==='ready')return;  
   const pl=me.finished?place:rankOf(me);put('place','<span class="l">POSITION</span><b>'+pl+'</b><sup>'+ord(pl).slice(String(pl).length)+'</sup><em>/'+R.length+'</em>');  
   put('lap','<span>LAP</span><b>'+clamp(me.lap+1,1,LAPS)+'/'+LAPS+'</b><span>TIME</span><b>'+fmt(me.finished?finT:raceT)+'</b>');  
+  {const t=me.tw||0,p=Math.round(100-t*100),c=t<.45?'#5ad28c':t<.75?'#ffd23f':'#ff4d2e',st=me.pm===2?'IN THE PITS':me.pm?'PIT LIMITER':me.pitReq?'PIT NEXT LAP':t>.75?'BOX! BOX!':t>.45?'WORN':'GOOD',e=$('tyre');
+    e.classList.toggle('low',t>.75&&!me.pitReq&&!me.pm);e.classList.toggle('pit',!!(me.pitReq||me.pm));
+    put('tyre','<div class="ring" style="--tp:'+p+';--tc:'+c+'"><b>'+p+'</b></div><div class="tx" style="--tc:'+(me.pitReq||me.pm?'#ffd23f':c)+'"><span>TYRES</span><em>'+st+'</em></div>')}
   put('spd','<b>'+Math.round(me.v*U().s)+'</b><span>'+U().sl+'</span><span class="gr">'+(me.v<.5?'N':me.gr)+'</span><span>'+Math.round(4000+Math.min(1,me.rpm)*11000)+' RPM</span>');  
   {let w=null,wd=1e9;if(state==='race'&&!me.finished)for(const q of rockets){if(q.tg!==me.id||q.own===me.id)continue;const d=Math.hypot(q.x-me.x,q.z-me.z);if(d<wd){wd=d;w=q}}  
     const el=$('warn');el.classList.toggle('on',!!w);  
@@ -1073,12 +1124,15 @@ function applyCfg(){
   const w=$('sw');w.innerHTML='';
   COLS.forEach(h=>{const b=document.createElement('button');b.type='button';b.className='sw'+(cur===h?' on':'');b.style.setProperty('--c',h);b.setAttribute('aria-label','Car color '+h);
     b.addEventListener('click',()=>{cfg.col=h;saveCfg();applyCfg()});w.appendChild(b)});
+  LAPS=clamp(+cfg.laps||3,1,20);$('lN').textContent=LAPS+(LAPS===1?' lap':' laps');$('lM').disabled=LAPS<=1;$('lP').disabled=LAPS>=20;$('eb').textContent='Circuit Grand Prix · '+LAPS+(LAPS===1?' lap':' laps');
   $('uM').classList.toggle('on',cfg.unit!=='imperial');$('uI').classList.toggle('on',cfg.unit==='imperial');
 }
 $('set').addEventListener('click',()=>{const o=$('sp');o.hidden=!o.hidden;$('set').setAttribute('aria-expanded',String(!o.hidden))});
 $('cc').addEventListener('input',e=>{cfg.col=e.target.value;saveCfg();applyCfg()});
 $('uM').addEventListener('click',()=>{cfg.unit='metric';saveCfg();applyCfg()});
 $('uI').addEventListener('click',()=>{cfg.unit='imperial';saveCfg();applyCfg()});
+const setLaps=n=>{cfg.laps=clamp(n,1,20);saveCfg();applyCfg()};
+$('lM').addEventListener('click',()=>setLaps(LAPS-1));$('lP').addEventListener('click',()=>setLaps(LAPS+1));
 applyCfg();
 // ---------- update screen: what changed since the previous build (opens once per version, and from the menu)
 const UPD={ver:'2.0',date:'21 Oct 2026',sub:"Here's what I changed since the last version. The big stuff is bridges, hills and how the car drives.",groups:[
